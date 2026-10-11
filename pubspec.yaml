@@ -1,0 +1,47 @@
+name: expense_distribution_app
+description: A Flutter application for expense distribution.
+version: 2.0.0
+environment:
+  sdk: ">=2.17.0 <3.0.0"
+
+dependencies:
+  flutter_lints: ^2.0.0
+  flutter:
+    sdk: flutter
+  sqflite: ^2.3.3+1
+  window_manager: ^0.3.9
+  path: ^1.9.0
+  logging: ^1.2.0
+  go_router: ^16.2.1
+  intl: ^0.20.2
+  file_picker: ^10.2.0
+  path_provider: ^2.1.4
+  open_file: ^3.2.1
+  excel: ^4.0.6
+  archive: ^3.6.1
+  material_color_utilities: ^0.11.1
+  meta: ^1.16.0
+  petitparser: ^6.0.2
+  vector_math: ^2.1.4
+  xml: ^6.4.4
+  share_plus: ^12.0.2
+  permission_handler: ^11.3.1
+  sqflite_common_ffi: ^2.3.2
+  flutter_file_saver: ^0.9.0  
+  file_selector: ^1.0.0
+  spreadsheet_decoder: ^2.2.0
+  syncfusion_flutter_xlsio: ^29.2.11
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/3.jpg
+    - assets/1.ttf
+  fonts:
+    - family: Cairo
+      fonts:
+        - asset: assets/1.ttf
