@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:intl/intl.dart';
@@ -9,8 +10,28 @@ class DatabaseManager {
   DatabaseManager._internal();
 
   Database? _database;
+  String? _userId;
 
   Database? get database => _database;
+
+  String? get userId => _userId;
+
+  String get _dbFileName =>
+      _userId != null ? 'expenses_$_userId.db' : 'expenses.db';
+
+  /// ربط قاعدة البيانات المحلية بحساب المستخدم الحالي.
+  Future<void> setUserId(String? userId) async {
+    if (_userId == userId) return;
+    await closeConnection();
+    _userId = userId;
+  }
+
+  Future<String> databasePath() async {
+    if (kIsWeb) {
+      return _dbFileName;
+    }
+    return join(await getDatabasesPath(), _dbFileName);
+  }
 
   double asDouble(dynamic v, [double fallback = 0.0]) {
     if (v == null) return fallback;
@@ -35,17 +56,23 @@ class DatabaseManager {
 
   Future<void> initializeDatabase() async {
     try {
-      String path = join(await getDatabasesPath(), 'expenses.db');
+      final path = await databasePath();
       _database = await openDatabase(
         path,
-        version: 2,
+        version: 3,
         onCreate: (db, version) async {
           await _createTables(db);
+          await _ensureSyncMetadata(db);
+          await _installSyncRevisionTriggers(db);
         },
         onUpgrade: (db, oldVersion, newVersion) async {
           if (oldVersion < 2) {
             await _createTables(db);
             await _runMigrations(db);
+          }
+          if (oldVersion < 3) {
+            await _ensureSyncMetadata(db);
+            await _installSyncRevisionTriggers(db);
           }
         },
       );
@@ -62,20 +89,39 @@ class DatabaseManager {
     _database = null;
   }
 
+  Future<Uint8List> exportDatabaseBytes() async {
+    final path = await databasePath();
+    return await databaseFactory.readDatabaseBytes(path);
+  }
+
+  Future<void> importDatabaseBytes(Uint8List bytes) async {
+    final path = await databasePath();
+    await closeConnection();
+    await databaseFactory.writeDatabaseBytes(path, bytes);
+    await initializeDatabase();
+  }
+
+
   Future<void> reopenConnection() async {
     if (_database != null && _database!.isOpen) {
       await _database!.close();
     }
     _database = await openDatabase(
-      join(await getDatabasesPath(), 'expenses.db'),
-      version: 2,
+      await databasePath(),
+      version: 3,
       onCreate: (db, version) async {
         await _createTables(db);
+        await _ensureSyncMetadata(db);
+        await _installSyncRevisionTriggers(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await _createTables(db);
           await _runMigrations(db);
+        }
+        if (oldVersion < 3) {
+          await _ensureSyncMetadata(db);
+          await _installSyncRevisionTriggers(db);
         }
       },
     );
@@ -84,18 +130,24 @@ class DatabaseManager {
 
   Future<void> initializeNewDatabase() async {
     await closeConnection();
-    final path = join(await getDatabasesPath(), 'expenses.db');
+    final path = await databasePath();
     await deleteDatabase(path);
     _database = await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await _createTables(db);
+        await _ensureSyncMetadata(db);
+        await _installSyncRevisionTriggers(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
           await _createTables(db);
           await _runMigrations(db);
+        }
+        if (oldVersion < 3) {
+          await _ensureSyncMetadata(db);
+          await _installSyncRevisionTriggers(db);
         }
       },
     );
@@ -239,6 +291,87 @@ class DatabaseManager {
     ''');
 
     await _createArchiveTables(db);
+  }
+
+  Future<void> _ensureSyncMetadata(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sync_metadata (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await db.rawInsert(
+      "INSERT OR IGNORE INTO sync_metadata (id, updated_at) VALUES (1, datetime('now'))",
+    );
+  }
+
+  Future<void> _installSyncRevisionTriggers(Database db) async {
+    const tables = [
+      'expenses',
+      'members',
+      'meals',
+      'meal_items',
+      'meal_records',
+      'drink_records',
+      'miscellaneous_expenses',
+      'miscellaneous_contributions',
+      'archive_keys',
+      'monthly_closures',
+      'closure_summary',
+      'closure_summary_archive',
+      'expenses_archive',
+      'members_archive',
+      'meal_records_archive',
+      'drink_records_archive',
+      'miscellaneous_expenses_archive',
+      'miscellaneous_contributions_archive',
+      'monthly_totals_archive',
+    ];
+    for (final table in tables) {
+      final triggerName = 'sync_bump_$table';
+      await db.execute('DROP TRIGGER IF EXISTS $triggerName');
+      await db.execute('''
+        CREATE TRIGGER $triggerName
+        AFTER INSERT ON $table
+        BEGIN
+          UPDATE sync_metadata SET updated_at = datetime('now') WHERE id = 1;
+        END
+      ''');
+      await db.execute('DROP TRIGGER IF EXISTS ${triggerName}_upd');
+      await db.execute('''
+        CREATE TRIGGER ${triggerName}_upd
+        AFTER UPDATE ON $table
+        BEGIN
+          UPDATE sync_metadata SET updated_at = datetime('now') WHERE id = 1;
+        END
+      ''');
+      await db.execute('DROP TRIGGER IF EXISTS ${triggerName}_del');
+      await db.execute('''
+        CREATE TRIGGER ${triggerName}_del
+        AFTER DELETE ON $table
+        BEGIN
+          UPDATE sync_metadata SET updated_at = datetime('now') WHERE id = 1;
+        END
+      ''');
+    }
+  }
+
+  Future<DateTime?> getLocalRevisionTime() async {
+    if (_database == null || !_database!.isOpen) await initializeDatabase();
+    final row = await _database!.rawQuery(
+      'SELECT updated_at FROM sync_metadata WHERE id = 1 LIMIT 1',
+    );
+    if (row.isEmpty) return null;
+    final raw = row.first['updated_at'] as String?;
+    if (raw == null) return null;
+    return DateTime.tryParse(raw);
+  }
+
+  Future<void> touchLocalRevision() async {
+    if (_database == null || !_database!.isOpen) await initializeDatabase();
+    await _database!.rawUpdate(
+      "UPDATE sync_metadata SET updated_at = datetime('now') WHERE id = 1",
+    );
   }
 
   Future<void> _createArchiveTables(Database db) async {

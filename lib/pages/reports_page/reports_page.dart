@@ -26,6 +26,7 @@ class ReportsPage extends StatelessWidget {
         context.go('/main');
       },
       child: BackgroundScaffold(
+        title: 'التقارير',
         backgroundImagePath: backgroundImagePath,
         child: Stack(
           children: [
@@ -38,17 +39,7 @@ class ReportsPage extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
-                        'التقارير',
-                        style: TextStyle(
-                          fontSize: 40,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'DancingScript',
-                          color: Color.fromARGB(255, 0, 0, 0),
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 60),
+
                       LayoutBuilder(
                         builder: (context, constraints) {
                           double buttonWidth = constraints.maxWidth < 600

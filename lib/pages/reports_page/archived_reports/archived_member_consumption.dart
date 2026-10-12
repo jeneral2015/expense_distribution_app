@@ -25,12 +25,12 @@ class ArchivedMemberConsumption extends StatefulWidget {
 class _ArchivedMemberConsumptionState extends State<ArchivedMemberConsumption> {
   final TextStyle textStyle = const TextStyle(
     fontSize: 15,
-    fontFamily: 'DancingScript',
+    
   );
   final TextStyle titleStyle = const TextStyle(
     fontSize: 28,
     fontWeight: FontWeight.bold,
-    fontFamily: 'DancingScript',
+    
   );
 
   List<Map<String, dynamic>> subscribers = [];

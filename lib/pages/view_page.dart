@@ -35,6 +35,7 @@ class ViewPage extends StatelessWidget {
         _handleBack(context);
       },
       child: BackgroundScaffold(
+        title: 'عرض وبحث',
         backgroundImagePath: backgroundImagePath,
         child: Stack(
           children: [
@@ -50,7 +51,7 @@ class ViewPage extends StatelessWidget {
                         fontSize: 25,
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
-                        fontFamily: 'DancingScript',
+                        
                       ),
                       textDirection: TextDirection.rtl,
                     ),

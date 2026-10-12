@@ -4,6 +4,7 @@ import '../utils/button_utils.dart';
 import '../utils/database.dart';
 import '../utils/background_scaffold.dart';
 import '../utils/logger.dart';
+import '../services/auth_service.dart';
 
 class InputPurchasesPage extends StatefulWidget {
   final DatabaseManager db;
@@ -71,7 +72,7 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
               child: Text(
                 item,
                 textDirection: TextDirection.rtl,
-                style: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                style: const TextStyle(color: Colors.white, ),
               ),
             ))
         .toList();
@@ -116,7 +117,7 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
             title: const Text(
               'إضافة صنف جديد',
               textDirection: TextDirection.rtl,
-              style: TextStyle(fontFamily: 'Lalezar'),
+              style: TextStyle(),
             ),
             content: SingleChildScrollView(
               child: Column(
@@ -126,14 +127,14 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                     controller: _newItemNameController,
                     decoration: InputDecoration(
                       labelText: 'اسم الصنف الجديد',
-                      labelStyle: const TextStyle(color: Colors.black, fontFamily: 'Lalezar'),
+                      labelStyle: const TextStyle(color: Colors.black, ),
                       filled: true,
                       fillColor: Colors.black.withOpacity(0.1),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    style: const TextStyle(color: Colors.black, fontFamily: 'Lalezar'),
+                    style: const TextStyle(color: Colors.black, ),
                     textDirection: TextDirection.rtl,
                     onChanged: (query) {
                       AppLogger.logInfo('Searching for: $query');
@@ -146,7 +147,7 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                     style: TextStyle(
                       color: Colors.red,
                       fontWeight: FontWeight.bold,
-                      fontFamily: 'Lalezar',
+                      
                     ),
                     textDirection: TextDirection.rtl,
                   ),
@@ -161,7 +162,7 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                         return ListTile(
                           title: Text(
                             item,
-                            style: const TextStyle(color: Colors.black, fontFamily: 'Lalezar'),
+                            style: const TextStyle(color: Colors.black, ),
                             textDirection: TextDirection.rtl,
                           ),
                           onTap: () {
@@ -473,6 +474,7 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
         _handleBack();
       },
       child: BackgroundScaffold(
+        title: 'إدخال المشتروات',
         backgroundImagePath: widget.backgroundImagePath,
         child: Stack(
           children: [
@@ -482,17 +484,7 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
-                      'إدخال المشتروات',
-                      style: TextStyle(
-                        fontSize: 25,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                        fontFamily: 'DancingScript',
-                      ),
-                      textDirection: TextDirection.rtl,
-                    ),
-                    const SizedBox(height: 20),
+
                     FutureBuilder<List<DropdownMenuItem<String>>>(
                       future: _getExpenseOptions(),
                       builder: (context, snapshot) {
@@ -507,7 +499,7 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                                 value: _selectedItemName,
                                 decoration: InputDecoration(
                                   labelText: 'اسم الصنف',
-                                  labelStyle: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                                  labelStyle: const TextStyle(color: Colors.white, ),
                                   filled: true,
                                   fillColor: Colors.black.withOpacity(0.7),
                                   border: OutlineInputBorder(
@@ -517,7 +509,7 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                                 hint: const Text(
                                   'اسم الصنف',
                                   textDirection: TextDirection.rtl,
-                                  style: TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                                  style: TextStyle(color: Colors.white, ),
                                 ),
                                 items: snapshot.data ?? [],
                                 onChanged: (value) {
@@ -545,7 +537,7 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                                         });
                                   });
                                 },
-                                style: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                                style: const TextStyle(color: Colors.white, ),
                                 dropdownColor: Colors.black.withOpacity(0.7),
                                 selectedItemBuilder: (BuildContext context) {
                                   return (snapshot.data ?? [])
@@ -553,7 +545,7 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                                             item.value!,
                                             style: const TextStyle(
                                               color: Colors.white,
-                                              fontFamily: 'Lalezar',
+                                              
                                             ),
                                             textDirection: TextDirection.rtl,
                                           ))
@@ -562,13 +554,14 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                               ),
                             ),
                             const SizedBox(width: 10),
-                            createButton(
-                              text: '➕ إضافة صنف',
-                              onPressed: _openAddItemDialog,
-                              bgColor: Colors.blue[700]!,
-                              width: 150,
-                              height: 50,
-                            ),
+                            if (AuthService.instance.canAdd)
+                              createButton(
+                                text: '➕ إضافة صنف',
+                                onPressed: _openAddItemDialog,
+                                bgColor: Colors.blue[700]!,
+                                width: 150,
+                                height: 50,
+                              ),
                           ],
                         );
                       },
@@ -578,7 +571,7 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                       value: _selectedUnit,
                       decoration: InputDecoration(
                         labelText: 'الوحدة',
-                        labelStyle: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                        labelStyle: const TextStyle(color: Colors.white, ),
                         filled: true,
                         fillColor: Colors.black.withOpacity(0.7),
                         border: OutlineInputBorder(
@@ -588,7 +581,7 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                       hint: const Text(
                         'الوحدة',
                         textDirection: TextDirection.rtl,
-                        style: TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                        style: TextStyle(color: Colors.white, ),
                       ),
                       items: _unitOptions
                           .map((unit) => DropdownMenuItem<String>(
@@ -596,7 +589,7 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                                 child: Text(
                                   unit,
                                   textDirection: TextDirection.rtl,
-                                  style: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                                  style: const TextStyle(color: Colors.white, ),
                                 ),
                               ))
                           .toList(),
@@ -605,13 +598,13 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                           _selectedUnit = value;
                         });
                       },
-                      style: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                      style: const TextStyle(color: Colors.white, ),
                       dropdownColor: Colors.black.withOpacity(0.7),
                       selectedItemBuilder: (BuildContext context) {
                         return _unitOptions.map((String unit) {
                           return Text(
                             unit,
-                            style: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                            style: const TextStyle(color: Colors.white, ),
                             textDirection: TextDirection.rtl,
                           );
                         }).toList();
@@ -622,14 +615,14 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                       controller: _quantityController,
                       decoration: InputDecoration(
                         labelText: 'الكمية',
-                        labelStyle: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                        labelStyle: const TextStyle(color: Colors.white, ),
                         filled: true,
                         fillColor: Colors.black.withOpacity(0.7),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      style: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                      style: const TextStyle(color: Colors.white, ),
                       keyboardType: TextInputType.number,
                       textDirection: TextDirection.rtl,
                     ),
@@ -638,14 +631,14 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                       controller: _totalPriceController,
                       decoration: InputDecoration(
                         labelText: 'السعر الإجمالي',
-                        labelStyle: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                        labelStyle: const TextStyle(color: Colors.white, ),
                         filled: true,
                         fillColor: Colors.black.withOpacity(0.7),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      style: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                      style: const TextStyle(color: Colors.white, ),
                       keyboardType: TextInputType.number,
                       textDirection: TextDirection.rtl,
                     ),
@@ -670,7 +663,7 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                           style: TextStyle(
                             color: Colors.black,
                             fontWeight: FontWeight.bold,
-                            fontFamily: 'Lalezar',
+                            
                           ),
                           textDirection: TextDirection.rtl,
                         ),
@@ -692,21 +685,23 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                           style: TextStyle(
                             color: Colors.black,
                             fontWeight: FontWeight.bold,
-                            fontFamily: 'Lalezar',
+                            
                           ),
                           textDirection: TextDirection.rtl,
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
-                    createButton(
-                      text: 'حفظ',
-                      onPressed: _saveExpense,
-                      bgColor: Colors.green[700]!,
-                      width: buttonWidth,
-                      height: buttonHeight,
-                    ),
-                    const SizedBox(height: 20),
+                    if (AuthService.instance.canAdd) ...[
+                      createButton(
+                        text: 'حفظ',
+                        onPressed: _saveExpense,
+                        bgColor: Colors.green[700]!,
+                        width: buttonWidth,
+                        height: buttonHeight,
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                     createButton(
                       text: 'رجوع',
                       onPressed: _handleBack,

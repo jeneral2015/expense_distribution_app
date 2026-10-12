@@ -5,7 +5,7 @@ Widget createButton({
   required String text,
   required VoidCallback onPressed,
   Color bgColor = Colors.green,
-  Color textColor = Colors.black,
+  Color textColor = Colors.white,
   double width = 200.0,
   double height = 50.0,
   double elevation = 2.0,
@@ -54,7 +54,7 @@ Widget createButton({
                 child: Text(
                   text,
                   style: const TextStyle(
-                    fontFamily: 'Lalezar',
+                    
                     fontSize: 16, // حجم خط افتراضي
                   ),
                   maxLines: 1,
@@ -73,16 +73,5 @@ Widget createButton({
 Widget createHomeButton({
   required VoidCallback onPressed,
 }) {
-  return ElevatedButton(
-    onPressed: onPressed,
-    style: ElevatedButton.styleFrom(
-      backgroundColor: Colors.blue[700],
-      foregroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
-      padding: const EdgeInsets.all(10),
-    ),
-    child: const Text('🏠', style: TextStyle(fontSize: 20)),
-  );
+  return const SizedBox.shrink();
 }

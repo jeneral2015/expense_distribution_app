@@ -35,6 +35,7 @@ class _ManageRecordsPageState extends State<ManageRecordsPage> {
   @override
   Widget build(BuildContext context) {
     return BackgroundScaffold(
+      title: 'إدارة السجلات',
       backgroundImagePath: 'assets/3.jpg',
       child: WillPopScope(
         onWillPop: () async {
@@ -58,18 +59,6 @@ class _ManageRecordsPageState extends State<ManageRecordsPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      SizedBox(
-                        height: MediaQuery.of(context).orientation == Orientation.portrait
-                            ? MediaQuery.of(context).size.height * 0.1
-                            : MediaQuery.of(context).size.height * 0.05,
-                      ),
-                      Text(
-                        'إدارة السجلات',
-                        style: titleStyle.copyWith(color: Colors.black),
-                        textAlign: TextAlign.center,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 40),
                       
                       // Meal Records Management
                       Card(

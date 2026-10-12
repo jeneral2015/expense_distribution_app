@@ -25,12 +25,12 @@ class ArchivedExpensesReport extends StatefulWidget {
 class _ArchivedExpensesReportState extends State<ArchivedExpensesReport> {
   final TextStyle textStyle = const TextStyle(
     fontSize: 15,
-    fontFamily: 'DancingScript',
+    
   );
   final TextStyle titleStyle = const TextStyle(
     fontSize: 28,
     fontWeight: FontWeight.bold,
-    fontFamily: 'DancingScript',
+    
   );
 
   List<Map<String, dynamic>> expenses = [];

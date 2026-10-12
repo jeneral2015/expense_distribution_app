@@ -4,6 +4,7 @@ import '../utils/button_utils.dart';
 import '../utils/database.dart';
 import '../utils/background_scaffold.dart';
 import '../utils/logger.dart';
+import '../services/auth_service.dart';
 
 class ShowSubscribersPage extends StatefulWidget {
   final DatabaseManager db;
@@ -178,7 +179,7 @@ class _ShowSubscribersPageState extends State<ShowSubscribersPage> with WidgetsB
         title: const Text(
           'تعديل بيانات المشترك',
           textDirection: TextDirection.rtl,
-          style: TextStyle(fontFamily: 'Lalezar'),
+          style: TextStyle(),
         ),
         content: SingleChildScrollView(
           child: Column(
@@ -188,7 +189,7 @@ class _ShowSubscribersPageState extends State<ShowSubscribersPage> with WidgetsB
                 controller: _rankController,
                 decoration: const InputDecoration(
                   labelText: 'الرتبة',
-                  labelStyle: TextStyle(fontFamily: 'Lalezar'),
+                  labelStyle: TextStyle(),
                   border: OutlineInputBorder(),
                 ),
                 textDirection: TextDirection.rtl,
@@ -198,7 +199,7 @@ class _ShowSubscribersPageState extends State<ShowSubscribersPage> with WidgetsB
                 controller: _nameController,
                 decoration: const InputDecoration(
                   labelText: 'الاسم',
-                  labelStyle: TextStyle(fontFamily: 'Lalezar'),
+                  labelStyle: TextStyle(),
                   border: OutlineInputBorder(),
                 ),
                 textDirection: TextDirection.rtl,
@@ -208,7 +209,7 @@ class _ShowSubscribersPageState extends State<ShowSubscribersPage> with WidgetsB
                 controller: _contributionController,
                 decoration: const InputDecoration(
                   labelText: 'مبلغ المساهمة',
-                  labelStyle: TextStyle(fontFamily: 'Lalezar'),
+                  labelStyle: TextStyle(),
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
@@ -219,7 +220,7 @@ class _ShowSubscribersPageState extends State<ShowSubscribersPage> with WidgetsB
                 controller: _totalDueController,
                 decoration: InputDecoration(
                   labelText: 'المبلغ المستحق',
-                  labelStyle: const TextStyle(fontFamily: 'Lalezar'),
+                  labelStyle: const TextStyle(),
                   border: const OutlineInputBorder(),
                   filled: true,
                   fillColor: Colors.grey[200],
@@ -310,14 +311,14 @@ class _ShowSubscribersPageState extends State<ShowSubscribersPage> with WidgetsB
         title: const Text(
           'تأكيد الحذف',
           textDirection: TextDirection.rtl,
-          style: TextStyle(fontFamily: 'Lalezar'),
+          style: TextStyle(),
         ),
         content: Text(
           membersToDelete.length > 1
               ? 'هل أنت متأكد أنك تريد حذف ${membersToDelete.length} مشتركين؟'
               : 'هل أنت متأكد أنك تريد حذف هذا المشترك؟',
           textDirection: TextDirection.rtl,
-          style: const TextStyle(fontFamily: 'Lalezar'),
+          style: const TextStyle(),
         ),
         actions: [
           createButton(
@@ -395,6 +396,7 @@ class _ShowSubscribersPageState extends State<ShowSubscribersPage> with WidgetsB
         _handleBack();
       },
       child: BackgroundScaffold(
+        title: 'عرض بيانات المشتركين',
         backgroundImagePath: widget.backgroundImagePath,
         child: Stack(
           children: [
@@ -404,17 +406,6 @@ class _ShowSubscribersPageState extends State<ShowSubscribersPage> with WidgetsB
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
-                      'عرض بيانات المشتركين',
-                      style: TextStyle(
-                        fontSize: 25,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                        fontFamily: 'DancingScript',
-                      ),
-                      textDirection: TextDirection.rtl,
-                    ),
-                    const SizedBox(height: 10),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: DataTable(
@@ -440,11 +431,11 @@ class _ShowSubscribersPageState extends State<ShowSubscribersPage> with WidgetsB
                               },
                             ),
                           ),
-                          const DataColumn(label: Text('مسلسل', style: TextStyle(fontFamily: 'Lalezar'))),
-                          const DataColumn(label: Text('الرتبة', style: TextStyle(fontFamily: 'Lalezar'))),
-                          const DataColumn(label: Text('الاسم', style: TextStyle(fontFamily: 'Lalezar'))),
-                          const DataColumn(label: Text('مبلغ المساهمة', style: TextStyle(fontFamily: 'Lalezar'))),
-                          const DataColumn(label: Text('المبلغ المستحق', style: TextStyle(fontFamily: 'Lalezar'))),
+                          const DataColumn(label: Text('مسلسل', style: TextStyle())),
+                          const DataColumn(label: Text('الرتبة', style: TextStyle())),
+                          const DataColumn(label: Text('الاسم', style: TextStyle())),
+                          const DataColumn(label: Text('مبلغ المساهمة', style: TextStyle())),
+                          const DataColumn(label: Text('المبلغ المستحق', style: TextStyle())),
                         ],
                         rows: _rows.asMap().entries.map((entry) {
                           final index = entry.key;
@@ -487,22 +478,26 @@ class _ShowSubscribersPageState extends State<ShowSubscribersPage> with WidgetsB
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        createButton(
-                          text: 'تعديل',
-                          onPressed: _editMember,
-                          bgColor: Colors.amber[700]!,
-                          width: buttonWidth / 3,
-                          height: buttonHeight,
-                        ),
-                        const SizedBox(width: 20),
-                        createButton(
-                          text: 'حذف',
-                          onPressed: _deleteMember,
-                          bgColor: Colors.red[700]!,
-                          width: buttonWidth / 3,
-                          height: buttonHeight,
-                        ),
-                        const SizedBox(width: 20),
+                        if (AuthService.instance.canEdit) ...[
+                          createButton(
+                            text: 'تعديل',
+                            onPressed: _editMember,
+                            bgColor: Colors.amber[700]!,
+                            width: buttonWidth / 3,
+                            height: buttonHeight,
+                          ),
+                          const SizedBox(width: 20),
+                        ],
+                        if (AuthService.instance.canDelete) ...[
+                          createButton(
+                            text: 'حذف',
+                            onPressed: _deleteMember,
+                            bgColor: Colors.red[700]!,
+                            width: buttonWidth / 3,
+                            height: buttonHeight,
+                          ),
+                          const SizedBox(width: 20),
+                        ],
                         createButton(
                           text: 'رجوع',
                           onPressed: _handleBack,

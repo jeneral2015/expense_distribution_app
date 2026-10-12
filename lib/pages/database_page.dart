@@ -1,22 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
+import '../firebase_options.dart';
+import '../services/auth_service.dart';
+import '../services/sync_service.dart';
 import '../utils/database.dart';
 import '../utils/button_utils.dart';
 import '../utils/background_scaffold.dart';
+import '../utils/file_downloader.dart';
 import 'dart:io' as io;
 
 class DatabasePage extends StatefulWidget {
   final DatabaseManager db;
+  final AuthService auth;
+  final SyncService sync;
   final VoidCallback navigateToMain;
 
   const DatabasePage({
     super.key,
     required this.db,
+    required this.auth,
+    required this.sync,
     required this.navigateToMain,
   });
 
@@ -26,6 +31,7 @@ class DatabasePage extends StatefulWidget {
 
 class _DatabasePageState extends State<DatabasePage> {
   String? dbPath;
+  bool _syncBusy = false;
 
   @override
   void initState() {
@@ -37,122 +43,157 @@ class _DatabasePageState extends State<DatabasePage> {
 
   Future<void> _initDbPath() async {
     if (kIsWeb) return;
-    final databasesPath = await getDatabasesPath();
+    final path = await widget.db.databasePath();
     setState(() {
-      dbPath = join(databasesPath, 'expenses.db');
+      dbPath = path;
     });
   }
 
-  Future<void> _exportDatabase() async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(this.context).showSnackBar(
-        const SnackBar(content: Text('هذه الخاصية غير مدعومة على الويب')),
-      );
+  Future<void> _runCloudSync(Future<void> Function(String uid) action) async {
+    if (!DefaultFirebaseOptions.isConfigured) {
+      _snack('يرجى إعداد Firebase أولاً (flutterfire configure)');
       return;
     }
-    
-    if (dbPath == null) return;
-    final dbFile = io.File(dbPath!);
-    
-    if (!await dbFile.exists()) {
-      ScaffoldMessenger.of(this.context).showSnackBar(
-        const SnackBar(content: Text('ملف قاعدة البيانات غير موجود!')),
-      );
+    final uid = widget.auth.userId;
+    if (uid == null) {
+      _snack('سجّل الدخول لتفعيل المزامنة');
       return;
     }
+    setState(() => _syncBusy = true);
+    try {
+      await action(uid);
+      _snack('تمت المزامنة بنجاح');
+    } catch (e) {
+      _snack('فشلت المزامنة: $e');
+    } finally {
+      if (mounted) setState(() => _syncBusy = false);
+    }
+  }
 
-    // إذا كان النظام ويندوز، استخدم Save As
-    if (io.Platform.isWindows) {
-      try {
-        // اختيار مكان لحفظ الملف
-        String? outputPath = await FilePicker.platform.saveFile(
-          dialogTitle: 'حفظ قاعدة البيانات',
-          fileName: 'expenses_backup.db',
-          allowedExtensions: ['db'],
-          type: FileType.custom,
-        );
-        
-        if (outputPath != null) {
-          // التأكد من إضافة الامتداد إذا لم يضفه المستخدم
-          if (!outputPath.toLowerCase().endsWith('.db')) {
-            outputPath += '.db';
-          }
-          
-          // نسخ الملف إلى الموقع المختار
-          await dbFile.copy(outputPath);
-          
-          ScaffoldMessenger.of(this.context).showSnackBar(
-            SnackBar(content: Text('تم حفظ قاعدة البيانات في: $outputPath')),
-          );
-        }
-      } catch (e) {
-        ScaffoldMessenger.of(this.context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ أثناء الحفظ: $e')),
-        );
-      }
-    } else {
-      // للنظم الأخرى استخدم المشاركة العادية
-      await Share.shareXFiles([XFile(dbFile.path)], text: 'قاعدة بيانات البرنامج');
+  Future<void> _confirmAndUploadCloud() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('تأكيد الرفع إلى السحابة', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text(
+            'هل أنت متأكد أنك تريد رفع قاعدة البيانات إلى السحابة؟\nسيؤدي هذا إلى استبدال البيانات السحابية الحالية بالبيانات المحلية.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('تأكيد الرفع'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      await _runCloudSync((uid) => widget.sync.uploadLocal(uid, widget.db));
+    }
+  }
+
+  Future<void> _confirmAndDownloadCloud() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('تأكيد التنزيل من السحابة', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text(
+            'هل أنت متأكد أنك تريد تنزيل البيانات من السحابة؟\nسيؤدي هذا إلى استبدال قاعدة البيانات المحلية الحالية بالنسخة السحابية.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF7C3AED),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('تأكيد التنزيل'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      await _runCloudSync((uid) => widget.sync.downloadToLocal(uid, widget.db));
+    }
+  }
+
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  Future<void> _exportDatabase() async {
+    try {
+      final bytes = await widget.db.exportDatabaseBytes();
+      await downloadOrSaveFile('expenses_backup.db', bytes);
+      _snack('تم تصدير قاعدة البيانات بنجاح');
+    } catch (e) {
+      _snack('حدث خطأ أثناء تصدير قاعدة البيانات: $e');
     }
   }
 
   Future<void> _importDatabase() async {
-    if (kIsWeb) {
-      ScaffoldMessenger.of(this.context).showSnackBar(
-        const SnackBar(content: Text('هذه الخاصية غير مدعومة على الويب')),
-      );
-      return;
-    }
-
     try {
-      // إظهار مؤشر تحميل
       showDialog(
-        context: this.context,
+        context: context,
         barrierDismissible: false,
         builder: (context) => const Center(child: CircularProgressIndicator()),
       );
 
-      // التعديل الرئيسي: استخدام FileType.any مع التحقق من الامتداد لاحقاً
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.any,
         dialogTitle: 'اختر ملف قاعدة البيانات (يجب أن يكون بامتداد .db)',
         allowMultiple: false,
+        withData: true,
       ).catchError((error) {
         if (!mounted) return null;
-        Navigator.pop(this.context);
-        ScaffoldMessenger.of(this.context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ: $error')),
-        );
+        Navigator.pop(context);
+        _snack('حدث خطأ: $error');
         return null;
       });
 
-      // إذا لم يتم اختيار ملف
       if (result == null || result.files.isEmpty) {
-        Navigator.pop(this.context);
+        Navigator.pop(context);
         return;
       }
 
       final pickedFile = result.files.first;
-      if (pickedFile.path == null) {
-        Navigator.pop(this.context);
-        ScaffoldMessenger.of(this.context).showSnackBar(
-          const SnackBar(content: Text('لم يتم تحديد مسار الملف!')),
-        );
+      
+      if (!pickedFile.name.toLowerCase().endsWith('.db')) {
+        Navigator.pop(context);
+        _snack('يجب اختيار ملف بامتداد .db فقط');
         return;
       }
 
-      // التحقق من امتداد الملف
-      if (!pickedFile.path!.toLowerCase().endsWith('.db')) {
-        Navigator.pop(this.context);
-        ScaffoldMessenger.of(this.context).showSnackBar(
-          const SnackBar(content: Text('يجب اختيار ملف بامتداد .db فقط')),
-        );
+      final bytes = pickedFile.bytes ?? (pickedFile.path != null ? await io.File(pickedFile.path!).readAsBytes() : null);
+      if (bytes == null) {
+        Navigator.pop(context);
+        _snack('لم نتمكن من قراءة محتوى الملف');
         return;
       }
 
-      // تأكيد الاستيراد
       final confirm = await showDialog<bool>(
-        context: this.context,
+        context: context,
         builder: (context) => AlertDialog(
           title: const Text('تأكيد الاستيراد'),
           content: const Text('سيتم استبدال قاعدة البيانات الحالية. هل أنت متأكد؟'),
@@ -170,54 +211,36 @@ class _DatabasePageState extends State<DatabasePage> {
       );
 
       if (confirm != true) {
-        Navigator.pop(this.context);
+        Navigator.pop(context);
         return;
       }
 
-      // إغلاق الاتصال الحالي
-      await widget.db.closeConnection();
+      await widget.db.importDatabaseBytes(bytes);
 
-      // نسخ الملف الجديد
-      final dbFile = io.File(dbPath!);
-      final sourceFile = io.File(pickedFile.path!);
-      await sourceFile.copy(dbFile.path);
-
-      // إعادة فتح الاتصال
-      await widget.db.reopenConnection();
-
-      Navigator.pop(this.context);
+      Navigator.pop(context);
       setState(() {});
-
-      ScaffoldMessenger.of(this.context).showSnackBar(
-        const SnackBar(content: Text('تم استيراد قاعدة البيانات بنجاح!')),
-      );
+      _snack('تم استيراد قاعدة البيانات بنجاح!');
     } catch (e) {
-      Navigator.pop(this.context);
-      ScaffoldMessenger.of(this.context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ أثناء الاستيراد: $e')),
-      );
-      
-      // محاولة إعادة فتح الاتصال في حالة الخطأ
+      Navigator.pop(context);
+      _snack('حدث خطأ أثناء الاستيراد: $e');
       try {
         await widget.db.reopenConnection();
-      } catch (e) {
-        ScaffoldMessenger.of(this.context).showSnackBar(
-          SnackBar(content: Text('فشل في إعادة الاتصال بقاعدة البيانات: $e')),
-        );
+      } catch (e2) {
+        _snack('فشل في إعادة الاتصال بقاعدة البيانات: $e2');
       }
     }
   }
 
   Future<void> _deleteDatabase() async {
     if (kIsWeb) {
-      ScaffoldMessenger.of(this.context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('هذه الخاصية غير مدعومة على الويب')),
       );
       return;
     }
 
     final confirm = await showDialog<bool>(
-      context: this.context,
+      context: context,
       builder: (context) => AlertDialog(
         title: const Text('تأكيد الحذف'),
         content: const Text('هل أنت متأكد أنك تريد حذف قاعدة البيانات؟'),
@@ -238,22 +261,22 @@ class _DatabasePageState extends State<DatabasePage> {
 
     try {
       showDialog(
-        context: this.context,
+        context: context,
         barrierDismissible: false,
         builder: (context) => const Center(child: CircularProgressIndicator()),
       );
 
       await widget.db.initializeNewDatabase();
 
-      Navigator.pop(this.context);
+      Navigator.pop(context);
       setState(() {});
 
-      ScaffoldMessenger.of(this.context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم حذف قاعدة البيانات وإنشاء قاعدة جديدة فارغة!')),
       );
     } catch (e) {
-      Navigator.pop(this.context);
-      ScaffoldMessenger.of(this.context).showSnackBar(
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('حدث خطأ أثناء الحذف: $e')),
       );
     }
@@ -275,6 +298,7 @@ class _DatabasePageState extends State<DatabasePage> {
         GoRouter.of(context).go('/main');
       },
       child: BackgroundScaffold(
+        title: 'إدارة قاعدة البيانات',
         backgroundImagePath: 'assets/3.jpg',
         child: Stack(
           children: [
@@ -284,21 +308,10 @@ class _DatabasePageState extends State<DatabasePage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const SizedBox(height: 40),
-                    const Text(
-                      'إدارة قاعدة البيانات',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                        fontFamily: 'DancingScript',
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 60),
-                    if (!kIsWeb)
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        spacing: spacing,
+
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: spacing,
                         runSpacing: spacing,
                         children: [
                           SizedBox(
@@ -333,19 +346,43 @@ class _DatabasePageState extends State<DatabasePage> {
                           ),
                         ],
                       ),
-                    if (kIsWeb)
-                      Padding(
-                        padding: const EdgeInsets.all(32.0),
-                        child: Text(
-                          'إدارة قاعدة البيانات غير متاحة على الويب.\nيرجى استخدام التطبيق على الموبايل أو الديسكتوب.',
-                          style: TextStyle(
-                            fontSize: 20,
-                            color: Colors.red[700],
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
+                    if (DefaultFirebaseOptions.isConfigured) ...[
+                      const SizedBox(height: 24),
+
+                      if (_syncBusy)
+                        const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: CircularProgressIndicator(),
+                        )
+                      else
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: spacing,
+                          runSpacing: spacing,
+                          children: [
+                            SizedBox(
+                              width: buttonWidth,
+                              height: buttonHeight,
+                              child: createButton(
+                                text: 'رفع للسحابة',
+                                icon: Icons.cloud_upload,
+                                onPressed: _confirmAndUploadCloud,
+                                bgColor: const Color(0xFF2563EB),
+                              ),
+                            ),
+                            SizedBox(
+                              width: buttonWidth,
+                              height: buttonHeight,
+                              child: createButton(
+                                text: 'تنزيل من السحابة',
+                                icon: Icons.cloud_download,
+                                onPressed: _confirmAndDownloadCloud,
+                                bgColor: const Color(0xFF7C3AED),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
+                    ],
                     const SizedBox(height: 40),
                     createButton(
                       text: 'رجوع',

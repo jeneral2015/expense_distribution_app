@@ -303,7 +303,7 @@ class _MealPageState extends State<MealPage> {
                     row['item_name'],
                     style: const TextStyle(
                       color: Colors.white,
-                      fontFamily: 'Lalezar',
+                      
                     ),
                   ),
                   value: _selectedMeals[row['item_name']] ?? false,
@@ -323,7 +323,7 @@ class _MealPageState extends State<MealPage> {
                   'مصاريف أخرى',
                   style: TextStyle(
                     color: Colors.white,
-                    fontFamily: 'Lalezar',
+                    
                   ),
                 ),
                 value: _miscVar,
@@ -387,7 +387,7 @@ class _MealPageState extends State<MealPage> {
                               '${(i + 1)} - ${members[i]['display_name']}',
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontFamily: 'Lalezar',
+                                
                               ),
                               textAlign: TextAlign.right,
                             ),
@@ -423,7 +423,7 @@ class _MealPageState extends State<MealPage> {
                                   '${_memberMeals[members[i]['display_name']] ?? 0}',
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    fontFamily: 'Lalezar',
+                                    
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -456,24 +456,14 @@ class _MealPageState extends State<MealPage> {
   List<Widget> _buildStepContent(BuildContext context) {
     if (_currentStep == 0) {
       return [
-        const Text(
-          'تسجيل الوجبة',
-          style: TextStyle(
-            fontSize: 40,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-            fontFamily: 'DancingScript',
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 20),
+
         TextField(
           controller: _dateController,
           decoration: InputDecoration(
             labelText: 'التاريخ',
             labelStyle: const TextStyle(
               color: Colors.white,
-              fontFamily: 'Lalezar',
+              
             ),
             filled: true,
             fillColor: Colors.black.withOpacity(0.7),
@@ -483,7 +473,7 @@ class _MealPageState extends State<MealPage> {
           ),
           style: const TextStyle(
             color: Colors.white,
-            fontFamily: 'Lalezar',
+            
           ),
           readOnly: true,
           onTap: () async {
@@ -505,7 +495,7 @@ class _MealPageState extends State<MealPage> {
             labelText: 'اختر نوع الوجبة',
             labelStyle: const TextStyle(
               color: Colors.white,
-              fontFamily: 'Lalezar',
+              
             ),
             filled: true,
             fillColor: Colors.black.withOpacity(0.7),
@@ -517,7 +507,7 @@ class _MealPageState extends State<MealPage> {
             'نوع الوجبة',
             style: TextStyle(
               color: Colors.white,
-              fontFamily: 'Lalezar',
+              
             ),
           ),
           items: ['فطار', 'غداء', 'عشاء'].map((String value) {
@@ -527,7 +517,7 @@ class _MealPageState extends State<MealPage> {
                 value,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontFamily: 'Lalezar',
+                  
                 ),
               ),
             );
@@ -539,7 +529,7 @@ class _MealPageState extends State<MealPage> {
           },
           style: const TextStyle(
             color: Colors.white,
-            fontFamily: 'Lalezar',
+            
           ),
           dropdownColor: Colors.black.withOpacity(0.7),
         ),
@@ -563,17 +553,7 @@ class _MealPageState extends State<MealPage> {
       ];
     } else if (_currentStep == 1) {
       return [
-        const Text(
-          'اختيار الأصناف المستهلكة',
-          style: TextStyle(
-            fontSize: 30,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-            fontFamily: 'DancingScript',
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 20),
+
         FutureBuilder<List<Map<String, dynamic>>>(
           future: widget.db.fetchAll('SELECT item_name FROM expenses WHERE is_drink = 0 AND is_miscellaneous = 0 AND remaining > 0'),
           builder: (context, snapshot) {
@@ -584,7 +564,7 @@ class _MealPageState extends State<MealPage> {
                 'حدث خطأ أثناء تحميل الأصناف',
                 style: TextStyle(
                   color: Colors.black,
-                  fontFamily: 'Lalezar',
+                  
                 ),
               );
             } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -594,7 +574,7 @@ class _MealPageState extends State<MealPage> {
                     'لا توجد أصناف متاحة',
                     style: TextStyle(
                       color: Colors.black,
-                      fontFamily: 'Lalezar',
+                      
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -629,17 +609,7 @@ class _MealPageState extends State<MealPage> {
       ];
     } else if (_currentStep == 2) {
       return [
-        const Text(
-          'حدد الكميات لكل صنف',
-          style: TextStyle(
-            fontSize: 30,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-            fontFamily: 'DancingScript',
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 20),
+
         ..._selectedMeals.entries.where((e) => e.value).map((e) {
           final controller = _mealQuantities[e.key] ??= TextEditingController();
           return Padding(
@@ -650,7 +620,7 @@ class _MealPageState extends State<MealPage> {
                 labelText: 'كمية ${e.key}',
                 labelStyle: const TextStyle(
                   color: Colors.white,
-                  fontFamily: 'Lalezar',
+                  
                 ),
                 filled: true,
                 fillColor: Colors.black.withOpacity(0.7),
@@ -660,7 +630,7 @@ class _MealPageState extends State<MealPage> {
               ),
               style: const TextStyle(
                 color: Colors.white,
-                fontFamily: 'Lalezar',
+                
               ),
               keyboardType: TextInputType.number,
             ),
@@ -675,7 +645,7 @@ class _MealPageState extends State<MealPage> {
                 labelText: 'مبلغ المصاريف الأخرى',
                 labelStyle: const TextStyle(
                   color: Colors.white,
-                  fontFamily: 'Lalezar',
+                  
                 ),
                 filled: true,
                 fillColor: Colors.black.withOpacity(0.7),
@@ -685,7 +655,7 @@ class _MealPageState extends State<MealPage> {
               ),
               style: const TextStyle(
                 color: Colors.white,
-                fontFamily: 'Lalezar',
+                
               ),
               keyboardType: TextInputType.number,
             ),
@@ -793,17 +763,7 @@ class _MealPageState extends State<MealPage> {
       ];
     } else if (_currentStep == 3) {
       return [
-        const Text(
-          'اختيار الأعضاء',
-          style: TextStyle(
-            fontSize: 40,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-            fontFamily: 'DancingScript',
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 20),
+
         FutureBuilder<List<Map<String, dynamic>>>(
           future: widget.db.fetchAll(
             'SELECT member_id, rank, rank || \' \' || name AS display_name FROM members ORDER BY CASE rank WHEN \'لواء\' THEN 1 WHEN \'عميد\' THEN 2 WHEN \'عقيد\' THEN 3 WHEN \'مقدم\' THEN 4 WHEN \'رائد\' THEN 5 WHEN \'نقيب\' THEN 6 WHEN \'ملازم أول\' THEN 7 WHEN \'ملازم\' THEN 8 ELSE 9 END',
@@ -816,7 +776,7 @@ class _MealPageState extends State<MealPage> {
                 'حدث خطأ أثناء تحميل الأعضاء',
                 style: TextStyle(
                   color: Colors.black,
-                  fontFamily: 'Lalezar',
+                  
                 ),
               );
             } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -824,7 +784,7 @@ class _MealPageState extends State<MealPage> {
                 'لا يوجد أعضاء متاحين',
                 style: TextStyle(
                   color: Colors.black,
-                  fontFamily: 'Lalezar',
+                  
                 ),
               );
             }
@@ -865,6 +825,7 @@ class _MealPageState extends State<MealPage> {
         widget.navigateToDistribute_expenses();
       },
       child: BackgroundScaffold(
+        title: 'توزيع الوجبات',
         backgroundImagePath: widget.backgroundImagePath,
         child: Stack(
           children: [

@@ -5,6 +5,7 @@ import '../utils/button_utils.dart';
 import '../utils/database.dart';
 import '../utils/background_scaffold.dart';
 import '../utils/logger.dart';
+import '../services/auth_service.dart';
 
 class InputSubscribersPage extends StatefulWidget {
   final DatabaseManager db;
@@ -166,6 +167,7 @@ class _InputSubscribersPageState extends State<InputSubscribersPage> {
         _handleBack();
       },
       child: BackgroundScaffold(
+        title: 'إدخال بيانات المشتركين',
         backgroundImagePath: widget.backgroundImagePath,
         child: Stack(
           children: [
@@ -175,21 +177,10 @@ class _InputSubscribersPageState extends State<InputSubscribersPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
-                      'إدخال بيانات المشتركين',
-                      style: TextStyle(
-                        fontSize: 25,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                        fontFamily: 'DancingScript',
-                      ),
-                      textDirection: TextDirection.rtl,
-                    ),
-                    const SizedBox(height: 20),
                     DropdownButtonFormField<String>(
                       decoration: InputDecoration(
                         labelText: 'الرتبة',
-                        labelStyle: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                        labelStyle: const TextStyle(color: Colors.white, ),
                         filled: true,
                         fillColor: Colors.black.withOpacity(0.7),
                         border: OutlineInputBorder(
@@ -200,7 +191,7 @@ class _InputSubscribersPageState extends State<InputSubscribersPage> {
                       hint: const Text(
                         'الرتبة',
                         textDirection: TextDirection.rtl,
-                        style: TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                        style: TextStyle(color: Colors.white, ),
                       ),
                       items: _ranks.map((rank) {
                         return DropdownMenuItem(
@@ -208,7 +199,7 @@ class _InputSubscribersPageState extends State<InputSubscribersPage> {
                           child: Text(
                             rank,
                             textDirection: TextDirection.rtl,
-                            style: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                            style: const TextStyle(color: Colors.white, ),
                           ),
                         );
                       }).toList(),
@@ -217,13 +208,13 @@ class _InputSubscribersPageState extends State<InputSubscribersPage> {
                           _selectedRank = value;
                         });
                       },
-                      style: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                      style: const TextStyle(color: Colors.white, ),
                       dropdownColor: Colors.black.withOpacity(0.7),
                       selectedItemBuilder: (BuildContext context) {
                         return _ranks.map((String rank) {
                           return Text(
                             rank,
-                            style: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                            style: const TextStyle(color: Colors.white, ),
                             textDirection: TextDirection.rtl,
                           );
                         }).toList();
@@ -234,14 +225,14 @@ class _InputSubscribersPageState extends State<InputSubscribersPage> {
                       controller: _nameController,
                       decoration: InputDecoration(
                         labelText: 'اسم المشترك',
-                        labelStyle: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                        labelStyle: const TextStyle(color: Colors.white, ),
                         filled: true,
                         fillColor: Colors.black.withOpacity(0.7),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      style: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                      style: const TextStyle(color: Colors.white, ),
                       textDirection: TextDirection.rtl,
                       onChanged: _searchSimilarNames,
                     ),
@@ -260,7 +251,7 @@ class _InputSubscribersPageState extends State<InputSubscribersPage> {
                             return ListTile(
                               title: Text(
                                 name,
-                                style: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                                style: const TextStyle(color: Colors.white, ),
                                 textDirection: TextDirection.rtl,
                               ),
                               onTap: () => _selectSimilarName(name),
@@ -274,26 +265,28 @@ class _InputSubscribersPageState extends State<InputSubscribersPage> {
                       controller: _contributionController,
                       decoration: InputDecoration(
                         labelText: 'مبلغ المساهمة',
-                        labelStyle: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                        labelStyle: const TextStyle(color: Colors.white, ),
                         filled: true,
                         fillColor: Colors.black.withOpacity(0.7),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      style: const TextStyle(color: Colors.white, fontFamily: 'Lalezar'),
+                      style: const TextStyle(color: Colors.white, ),
                       keyboardType: TextInputType.number,
                       textDirection: TextDirection.rtl,
                     ),
                     const SizedBox(height: 20),
-                    createButton(
-                      text: 'حفظ',
-                      onPressed: _saveMember,
-                      bgColor: Colors.green[700]!,
-                      width: buttonWidth,
-                      height: buttonHeight,
-                    ),
-                    const SizedBox(height: 20),
+                    if (AuthService.instance.canAdd) ...[
+                      createButton(
+                        text: 'حفظ',
+                        onPressed: _saveMember,
+                        bgColor: Colors.green[700]!,
+                        width: buttonWidth,
+                        height: buttonHeight,
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                     createButton(
                       text: 'رجوع',
                       onPressed: _handleBack,

@@ -37,16 +37,6 @@ class _DistributeExpensesPageState extends State<DistributeExpensesPage> {
 
   @override
   Widget build(BuildContext context) {
-    const title = Text(
-      'توزيع المصروفات',
-      style: TextStyle(
-        fontSize: 40,
-        fontWeight: FontWeight.bold,
-        color: Colors.black,
-        fontFamily: 'DancingScript',
-      ),
-      textAlign: TextAlign.center,
-    );
 
     final btnDrinks = createButton(
       text: '☕ المشروبات',
@@ -73,6 +63,7 @@ class _DistributeExpensesPageState extends State<DistributeExpensesPage> {
       child: Stack(
         children: [
           BackgroundScaffold(
+            title: 'توزيع المصروفات',
             backgroundImagePath: widget.backgroundImagePath,
             child: Center(
               child: SingleChildScrollView(
@@ -82,8 +73,7 @@ class _DistributeExpensesPageState extends State<DistributeExpensesPage> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: 50),
-                    title,
-                    const SizedBox(height: 50),
+
                     btnDrinks,
                     const SizedBox(height: 20),
                     btnMeals,

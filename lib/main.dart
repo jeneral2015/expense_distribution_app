@@ -1,62 +1,148 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
-import 'pages/main_page.dart';
-import 'utils/database.dart';
-import 'pages/input_page.dart';
-import 'pages/input_subscribers.dart';
-import 'pages/input_purchases.dart';
-import 'utils/background_scaffold.dart';
-import 'pages/view_page.dart';
-import 'pages/show_subscribers.dart';
-import 'pages/show_expenses.dart'; // استيراد الصفحة الجديدة (بدل show_purchases و show_over)
+
+import 'firebase_options.dart';
+import 'pages/auth/login_page.dart';
+import 'pages/auth/register_page.dart';
+import 'pages/database_page.dart';
 import 'pages/distribute_expenses.dart';
 import 'pages/drink_page.dart';
+import 'pages/end_month_page/end_month_page.dart';
+import 'pages/input_page.dart';
+import 'pages/input_purchases.dart';
+import 'pages/input_subscribers.dart';
+import 'pages/main_page.dart';
+import 'pages/manage_records.dart';
 import 'pages/meal_page.dart';
 import 'pages/reports_page/reports_page.dart';
-import 'pages/end_month_page/end_month_page.dart';
-import 'pages/database_page.dart';
-import 'pages/manage_records.dart';
-import 'dart:io';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-
+import 'pages/settings_page.dart';
+import 'pages/show_expenses.dart';
+import 'pages/show_subscribers.dart';
+import 'pages/view_page.dart';
+import 'services/auth_service.dart';
+import 'services/sync_service.dart';
+import 'theme/app_theme.dart';
+import 'utils/background_scaffold.dart';
+import 'utils/database.dart';
+import 'utils/platform_database.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // لضمان تهيئة Flutter قبل العمليات الاسنكرونية
-  try {
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      sqfliteFfiInit();
-      databaseFactory = databaseFactoryFfi;
-    }
-  } catch (e) {
-    // Handle web platform where Platform.isWindows etc. are not available
-    // No need to initialize sqflite FFI for web
+  WidgetsFlutterBinding.ensureInitialized();
+  await initPlatformDatabase();
+
+  if (DefaultFirebaseOptions.isConfigured) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
   }
+
   Logger.root.level = Level.INFO;
   Logger.root.onRecord.listen((record) {
-    // Use proper logging instead of print in production code
     debugPrint('${record.level.name}: ${record.time}: ${record.message}');
   });
 
+  final auth = AuthService();
+  await auth.ensureInitialized();
   final db = DatabaseManager();
-  await db.initializeDatabase(); // تهيئة القاعدة مرة واحدة
+  final sync = SyncService();
 
-  runApp(MyApp(db: db));
+  await _bootstrapUserDatabase(auth, db, sync);
+
+  runApp(ExpensesApp(db: db, auth: auth, sync: sync));
 }
 
-class MyApp extends StatelessWidget {
-  final DatabaseManager db;
+Future<void> _bootstrapUserDatabase(
+  AuthService auth,
+  DatabaseManager db,
+  SyncService sync,
+) async {
+  final uid = auth.userId;
+  await db.setUserId(uid);
+  await db.initializeDatabase();
+}
 
-  const MyApp({super.key, required this.db});
+class ExpensesApp extends StatefulWidget {
+  const ExpensesApp({
+    super.key,
+    required this.db,
+    required this.auth,
+    required this.sync,
+  });
+
+  final DatabaseManager db;
+  final AuthService auth;
+  final SyncService sync;
 
   @override
-  Widget build(BuildContext context) {
-    final GoRouter router = GoRouter(
-      initialLocation: '/main',
+  State<ExpensesApp> createState() => _ExpensesAppState();
+}
+
+class _ExpensesAppState extends State<ExpensesApp> {
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.auth.addListener(_onAuthChanged);
+    _router = _buildRouter();
+  }
+
+  @override
+  void dispose() {
+    widget.auth.removeListener(_onAuthChanged);
+    super.dispose();
+  }
+
+  Future<void> _onAuthChanged() async {
+    final uid = widget.auth.userId;
+    
+    // If we're just toggling loading state, only refresh the router.
+    if (widget.auth.isLoadingPermissions) {
+      _router.refresh();
+      return;
+    }
+
+    await widget.db.setUserId(uid);
+    await widget.db.initializeDatabase();
+    
+    // Refresh the UI IMMEDIATELY so the loading circle disappears.
+    _router.refresh();
+  }
+
+  GoRouter _buildRouter() {
+    final db = widget.db;
+    final auth = widget.auth;
+
+    final firebaseEnabled = DefaultFirebaseOptions.isConfigured;
+
+    return GoRouter(
+      initialLocation: !firebaseEnabled || auth.isLoggedIn ? '/main' : '/login',
+      refreshListenable: auth,
+      redirect: (context, state) {
+        if (!firebaseEnabled) {
+          return null;
+        }
+        final loggedIn = auth.isLoggedIn;
+        final loc = state.matchedLocation;
+        final onAuth = loc == '/login' || loc == '/register';
+        if (!loggedIn && !onAuth) return '/login';
+        if (loggedIn && onAuth) return '/main';
+        return null;
+      },
       routes: [
         GoRoute(
+          path: '/login',
+          builder: (context, state) => LoginPage(auth: auth),
+        ),
+        GoRoute(
+          path: '/register',
+          builder: (context, state) => RegisterPage(auth: auth),
+        ),
+        GoRoute(
           path: '/main',
-          builder: (context, state) => MainScreen(db: db),
+          builder: (context, state) => MainScreen(db: db, auth: auth),
         ),
         GoRoute(
           path: '/input',
@@ -98,11 +184,12 @@ class MyApp extends StatelessWidget {
             backgroundImagePath: 'assets/3.jpg',
           ),
         ),
-        GoRoute( // الـ route الجديد للصفحة العامة
+        GoRoute(
           path: '/show_expenses',
           builder: (context, state) {
-            final extra = state.extra as Map<String, dynamic>? ?? {}; // استخراج الـ extra
-            final bool isMiscellaneous = extra['isMiscellaneous'] as bool? ?? false; // افتراضي false
+            final extra = state.extra as Map<String, dynamic>? ?? {};
+            final bool isMiscellaneous =
+                extra['isMiscellaneous'] as bool? ?? false;
             return ShowExpensesPage(
               db: db,
               navigateToView: () => context.go('/view'),
@@ -123,7 +210,8 @@ class MyApp extends StatelessWidget {
           path: '/drink',
           builder: (context, state) => DrinkPage(
             db: db,
-            navigateToDistribute_expenses: () => context.go('/distribute_expenses'),
+            navigateToDistribute_expenses: () =>
+                context.go('/distribute_expenses'),
             backgroundImagePath: 'assets/3.jpg',
           ),
         ),
@@ -131,7 +219,8 @@ class MyApp extends StatelessWidget {
           path: '/meal',
           builder: (context, state) => MealPage(
             db: db,
-            navigateToDistribute_expenses: () => context.go('/distribute_expenses'),
+            navigateToDistribute_expenses: () =>
+                context.go('/distribute_expenses'),
             backgroundImagePath: 'assets/3.jpg',
           ),
         ),
@@ -155,8 +244,14 @@ class MyApp extends StatelessWidget {
           path: '/database',
           builder: (context, state) => DatabasePage(
             db: db,
+            auth: auth,
+            sync: widget.sync,
             navigateToMain: () => context.go('/main'),
           ),
+        ),
+        GoRoute(
+          path: '/settings',
+          builder: (context, state) => SettingsPage(auth: auth),
         ),
         GoRoute(
           path: '/manage_records',
@@ -167,29 +262,30 @@ class MyApp extends StatelessWidget {
         ),
       ],
     );
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'برنامج توزيع المصاريف',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        fontFamily: '1',
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      routerConfig: router,
+      theme: AppTheme.light(),
+      routerConfig: _router,
     );
   }
 }
 
 class MainScreen extends StatelessWidget {
   final DatabaseManager db;
+  final AuthService auth;
 
-  const MainScreen({super.key, required this.db});
+  const MainScreen({super.key, required this.db, required this.auth});
 
   @override
   Widget build(BuildContext context) {
     return BackgroundScaffold(
       backgroundImagePath: 'assets/3.jpg',
-      child: MainPage(db: db),
+      showAppBar: false,
+      child: MainPage(db: db, auth: auth),
     );
   }
 }

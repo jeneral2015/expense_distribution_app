@@ -1,11 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:excel/excel.dart' as old_excel;
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
-import 'dart:io';
+import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io' as io;
 
-/// دالة عامة لتصدير بيانات التقرير إلى ملف Excel (تتعامل مع Android و Windows)
+/// دالة عامة لتصدير بيانات التقرير إلى ملف Excel (تتعامل مع جميع المنصات)
 Future<void> exportReportToExcel({
   required BuildContext context,
   required String reportTitle,
@@ -15,146 +15,134 @@ Future<void> exportReportToExcel({
   List<List<dynamic>>? totals, // بيانات الإجماليات
 }) async {
   try {
-    if (Platform.isWindows) {
-      /// ============================
-      /// نسخة ويندوز - Syncfusion
-      /// ============================
-      final workbook = xlsio.Workbook();
-      final sheet = workbook.worksheets[0];
+    final workbook = xlsio.Workbook();
+    final sheet = workbook.worksheets[0];
+    
+    sheet.name = 'التقرير';
+    sheet.isRightToLeft = true; // تعيين الاتجاه لليمين (RTL)
 
-      int currentRowIndex = 1;
+    int currentRowIndex = 1;
 
-      // عنوان التقرير
-      sheet.getRangeByIndex(currentRowIndex, 1).setText(reportTitle);
-      currentRowIndex += 2;
+    // تنسيق العنوان
+    final xlsio.Style titleStyle = workbook.styles.add('TitleStyle');
+    titleStyle.bold = true;
+    titleStyle.fontSize = 16;
+    titleStyle.hAlign = xlsio.HAlignType.center;
 
-      // بيانات إضافية
-      if (extraInfo != null && extraInfo.isNotEmpty) {
-        extraInfo.forEach((key, value) {
-          sheet.getRangeByIndex(currentRowIndex, 1).setText(key);
-          sheet.getRangeByIndex(currentRowIndex, 2).setText(value);
-          currentRowIndex++;
-        });
+    final xlsio.Style headerStyle = workbook.styles.add('HeaderStyle');
+    headerStyle.bold = true;
+    headerStyle.backColor = '#E0E0E0';
+    headerStyle.hAlign = xlsio.HAlignType.center;
+
+    // عنوان التقرير
+    final titleRange = sheet.getRangeByIndex(currentRowIndex, 1, currentRowIndex, columns.length);
+    titleRange.merge();
+    titleRange.setText(reportTitle);
+    titleRange.cellStyle = titleStyle;
+    currentRowIndex += 2;
+
+    // بيانات إضافية
+    if (extraInfo != null && extraInfo.isNotEmpty) {
+      extraInfo.forEach((key, value) {
+        sheet.getRangeByIndex(currentRowIndex, 1).setText(key);
+        sheet.getRangeByIndex(currentRowIndex, 2).setText(value);
         currentRowIndex++;
-      }
+      });
+      currentRowIndex++;
+    }
 
-      // الهيدر
-      for (int i = 0; i < columns.length; i++) {
-        sheet.getRangeByIndex(currentRowIndex, i + 1).setText(columns[i]);
+    // الهيدر
+    for (int i = 0; i < columns.length; i++) {
+      final cell = sheet.getRangeByIndex(currentRowIndex, i + 1);
+      cell.setText(columns[i]);
+      cell.cellStyle = headerStyle;
+    }
+    currentRowIndex++;
+
+    // الصفوف
+    for (final row in rows) {
+      for (int c = 0; c < row.length; c++) {
+        final cell = sheet.getRangeByIndex(currentRowIndex, c + 1);
+        if (row[c] is num) {
+          cell.setNumber((row[c] as num).toDouble());
+        } else {
+          cell.setText(row[c]?.toString() ?? '');
+        }
       }
       currentRowIndex++;
+    }
 
-      // الصفوف
-      for (final row in rows) {
-        for (int c = 0; c < row.length; c++) {
+    // الإجماليات
+    if (totals != null && totals.isNotEmpty) {
+      currentRowIndex++;
+      final totalTitle = sheet.getRangeByIndex(currentRowIndex, 1, currentRowIndex, columns.length);
+      totalTitle.merge();
+      totalTitle.setText("إجماليات الشهر");
+      totalTitle.cellStyle = headerStyle;
+      
+      currentRowIndex++;
+      for (final total in totals) {
+        for (int c = 0; c < total.length; c++) {
           final cell = sheet.getRangeByIndex(currentRowIndex, c + 1);
-          if (row[c] is num) {
-            cell.setNumber((row[c] as num).toDouble());
+          if (total[c] is num) {
+            cell.setNumber((total[c] as num).toDouble());
           } else {
-            cell.setText(row[c].toString());
+            cell.setText(total[c]?.toString() ?? '');
           }
         }
         currentRowIndex++;
       }
+    }
 
-      // الإجماليات
-      if (totals != null && totals.isNotEmpty) {
-        currentRowIndex++;
-        sheet.getRangeByIndex(currentRowIndex, 1).setText("إجماليات الشهر");
-        currentRowIndex++;
-        for (final total in totals) {
-          for (int c = 0; c < total.length; c++) {
-            final cell = sheet.getRangeByIndex(currentRowIndex, c + 1);
-            if (total[c] is num) {
-              cell.setNumber((total[c] as num).toDouble());
-            } else {
-              cell.setText(total[c].toString());
-            }
-          }
-          currentRowIndex++;
-        }
-      }
+    // تعديل حجم الأعمدة لتتناسب مع المحتوى (Auto-fit)
+    for (int i = 1; i <= columns.length; i++) {
+      sheet.autoFitColumn(i);
+    }
 
-      // حفظ الملف
-      final List<int> bytes = workbook.saveAsStream();
-      workbook.dispose();
+    // حفظ الملف
+    final List<int> bytes = workbook.saveAsStream();
+    workbook.dispose();
 
-      final directory = await getApplicationDocumentsDirectory();
-      final now =
-          DateTime.now().toString().replaceAll(RegExp(r'[:\-\. ]'), '_');
-      final filePath = '${directory.path}/${reportTitle}_$now.xlsx';
-      final file = File(filePath);
-      await file.writeAsBytes(bytes, flush: true);
+    final now = DateTime.now().toString().replaceAll(RegExp(r'[:\-\. ]'), '_');
+    final fileName = '${reportTitle}_$now.xlsx';
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text("تم إنشاء التقرير بنجاح على ويندوز ✅\n$filePath")),
+    // استخدام طريقة الحفظ أو المشاركة حسب المنصة
+    if (kIsWeb) {
+      await Share.shareXFiles(
+        [XFile.fromData(Uint8List.fromList(bytes), name: fileName, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')], 
+        text: 'تقرير $reportTitle'
       );
+    } else if (defaultTargetPlatform == TargetPlatform.windows) {
+      String? outputPath = await FilePicker.platform.saveFile(
+        dialogTitle: 'حفظ تقرير Excel',
+        fileName: fileName,
+        allowedExtensions: ['xlsx'],
+        type: FileType.custom,
+      );
+      if (outputPath != null) {
+        if (!outputPath.toLowerCase().endsWith('.xlsx')) {
+          outputPath += '.xlsx';
+        }
+        final file = io.File(outputPath);
+        await file.writeAsBytes(bytes, flush: true);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("تم حفظ التقرير بنجاح على ويندوز ✅\n$outputPath")),
+          );
+        }
+      }
     } else {
-      /// ============================
-      /// نسخة Android/iOS - excel
-      /// ============================
-      final excel = old_excel.Excel.createExcel();
-
-      // إنشاء الشيت
-      final sheet = excel['تقرير'];
-
-      // حذف الافتراضي
-      if (excel.sheets.containsKey('Sheet1')) {
-        excel.delete('Sheet1');
-      }
-
-      // الهيدر
-      sheet.appendRow(
-          columns.map((col) => old_excel.TextCellValue(col)).toList());
-
-      // الصفوف
-      for (final row in rows) {
-        final formattedRow = row.map((cell) {
-          if (cell is num)
-            return old_excel.TextCellValue(cell.toStringAsFixed(2));
-          return old_excel.TextCellValue(cell?.toString() ?? '');
-        }).toList();
-
-        formattedRow.addAll(List.filled(
-            columns.length - formattedRow.length, old_excel.TextCellValue('')));
-
-        sheet.appendRow(formattedRow);
-      }
-
-      // الإجماليات
-      if (totals != null && totals.isNotEmpty) {
-        sheet.appendRow(
-            List.filled(columns.length, old_excel.TextCellValue('')));
-        sheet.appendRow([old_excel.TextCellValue('إجماليات الشهر')]);
-        for (final total in totals) {
-          final formattedTotal = total.map((cell) {
-            if (cell is num)
-              return old_excel.TextCellValue(cell.toStringAsFixed(2));
-            return old_excel.TextCellValue(cell?.toString() ?? '');
-          }).toList();
-
-          formattedTotal.addAll(List.filled(
-              columns.length - formattedTotal.length,
-              old_excel.TextCellValue('')));
-          sheet.appendRow(formattedTotal);
-        }
-      }
-
-      // حفظ الملف مؤقتًا
-      final directory = await getTemporaryDirectory();
-      final now =
-          DateTime.now().toString().replaceAll(RegExp(r'[:\-\. ]'), '_');
-      final filePath = '${directory.path}/${reportTitle}_$now.xlsx';
-      final file = File(filePath);
-      await file.writeAsBytes(excel.encode()!);
-
-      // مشاركة الملف
+      // Android / iOS
+      final directory = await io.Directory.systemTemp.createTemp();
+      final filePath = '${directory.path}/$fileName';
+      final file = io.File(filePath);
+      await file.writeAsBytes(bytes, flush: true);
       await Share.shareXFiles([XFile(filePath)], text: 'تقرير $reportTitle');
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("تم تصدير التقرير ومشاركته بنجاح ✅")),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("تم تصدير التقرير ومشاركته بنجاح ✅")),
+        );
+      }
     }
   } catch (e) {
     debugPrint("خطأ أثناء تصدير التقرير: $e");

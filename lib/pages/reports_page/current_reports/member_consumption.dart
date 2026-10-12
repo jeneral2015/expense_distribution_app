@@ -7,6 +7,7 @@ import '../../../utils/background_scaffold.dart';
 import '../../../utils/excel_export.dart';
 import '../../../utils/undo_manager.dart';
 import '../../../utils/helpers.dart' as helpers;
+import '../../../services/auth_service.dart';
 
 class MemberConsumption extends StatefulWidget {
   final DatabaseManager db;
@@ -568,26 +569,30 @@ class _MemberConsumptionState extends State<MemberConsumption> {
                         runSpacing: 10,
                         alignment: WrapAlignment.center,
                         children: [
-                          createButton(
-                            text: 'حذف المختار',
-                            onPressed: () => _showDeleteConfirmationDialog(),
-                            bgColor: Colors.red[700]!,
-                            textColor: Colors.white,
-                            width: 150,
-                            height: 40,
-                            icon: Icons.delete,
-                            iconColor: Colors.white,
-                          ),
-                          createButton(
-                            text: 'تعديل المختار',
-                            onPressed: () => _showEditDialog(),
-                            bgColor: Colors.orange[700]!,
-                            textColor: Colors.white,
-                            width: 150,
-                            height: 40,
-                            icon: Icons.edit,
-                            iconColor: Colors.white,
-                          ),
+                          if (AuthService.instance.canDelete) ...[
+                            createButton(
+                              text: 'حذف المختار',
+                              onPressed: () => _showDeleteConfirmationDialog(),
+                              bgColor: Colors.red[700]!,
+                              textColor: Colors.white,
+                              width: 150,
+                              height: 40,
+                              icon: Icons.delete,
+                              iconColor: Colors.white,
+                            ),
+                          ],
+                          if (AuthService.instance.canEdit) ...[
+                            createButton(
+                              text: 'تعديل المختار',
+                              onPressed: () => _showEditDialog(),
+                              bgColor: Colors.orange[700]!,
+                              textColor: Colors.white,
+                              width: 150,
+                              height: 40,
+                              icon: Icons.edit,
+                              iconColor: Colors.white,
+                            ),
+                          ],
                         ],
                       ),
 

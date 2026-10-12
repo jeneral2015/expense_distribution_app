@@ -43,10 +43,10 @@ class InputPage extends StatelessWidget {
           final double buttonHeight = isPortrait ? 60.0 : 70.0;
           final double spacing = isPortrait ? 20.0 : 25.0;
           final double runSpacing = isPortrait ? 25.0 : 20.0;
-          final double titleSize = isPortrait ? 32.0 : 36.0;
           final double padding = isPortrait ? 16.0 : 24.0;
 
           return BackgroundScaffold(
+            title: 'إدخال البيانات',
             backgroundImagePath: backgroundImagePath,
             child: Stack(
               children: [
@@ -59,18 +59,7 @@ class InputPage extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          SizedBox(height: maxHeight * (isPortrait ? 0.08 : 0.12)),
-                          Text(
-                            'إدخال البيانات',
-                            style: TextStyle(
-                              fontSize: titleSize,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                              fontFamily: 'DancingScript',
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: runSpacing * 2),
+
                           isPortrait
                               ? Column(
                                   mainAxisAlignment: MainAxisAlignment.center,

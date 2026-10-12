@@ -4,6 +4,7 @@ import '../utils/button_utils.dart';
 import '../utils/database.dart';
 import '../utils/background_scaffold.dart';
 import '../utils/logger.dart';
+import '../services/auth_service.dart';
 
 class ShowExpensesPage extends StatefulWidget {
   final DatabaseManager db;
@@ -281,7 +282,7 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
               title: const Text(
                 'تعديل بيانات الصنف',
                 textDirection: TextDirection.rtl,
-                style: TextStyle(fontFamily: 'Lalezar'),
+                style: TextStyle(),
               ),
               content: SingleChildScrollView(
                 child: Column(
@@ -291,7 +292,7 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                       controller: itemNameController,
                       decoration: const InputDecoration(
                         labelText: 'اسم الصنف',
-                        labelStyle: TextStyle(fontFamily: 'Lalezar'),
+                        labelStyle: TextStyle(),
                         border: OutlineInputBorder(),
                       ),
                       textDirection: TextDirection.rtl,
@@ -303,13 +304,13 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                           : null,
                       decoration: const InputDecoration(
                         labelText: 'الوحدة',
-                        labelStyle: TextStyle(fontFamily: 'Lalezar'),
+                        labelStyle: TextStyle(),
                         border: OutlineInputBorder(),
                       ),
                       hint: const Text(
                         'اختر الوحدة',
                         textDirection: TextDirection.rtl,
-                        style: TextStyle(fontFamily: 'Lalezar', color: Colors.black),
+                        style: TextStyle( color: Colors.black),
                       ),
                       items: _units
                           .map((unit) => DropdownMenuItem(
@@ -318,7 +319,7 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                                   unit,
                                   textDirection: TextDirection.rtl,
                                   style: const TextStyle(
-                                      fontFamily: 'Lalezar', color: Colors.black),
+                                       color: Colors.black),
                                 ),
                               ))
                           .toList(),
@@ -328,14 +329,14 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                         });
                       },
                       style: const TextStyle(
-                          fontFamily: 'Lalezar', color: Colors.black),
+                           color: Colors.black),
                     ),
                     const SizedBox(height: 10),
                     TextField(
                       controller: quantityController,
                       decoration: const InputDecoration(
                         labelText: 'الكمية',
-                        labelStyle: TextStyle(fontFamily: 'Lalezar'),
+                        labelStyle: TextStyle(),
                         border: OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.number,
@@ -347,7 +348,7 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                       controller: priceController,
                       decoration: const InputDecoration(
                         labelText: 'سعر الوحدة',
-                        labelStyle: TextStyle(fontFamily: 'Lalezar'),
+                        labelStyle: TextStyle(),
                         border: OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.number,
@@ -359,7 +360,7 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                       controller: totalPriceController,
                       decoration: const InputDecoration(
                         labelText: 'السعر الإجمالي',
-                        labelStyle: TextStyle(fontFamily: 'Lalezar'),
+                        labelStyle: TextStyle(),
                         border: OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.number,
@@ -371,7 +372,7 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                       controller: consumptionController,
                       decoration: const InputDecoration(
                         labelText: 'الاستهلاك',
-                        labelStyle: TextStyle(fontFamily: 'Lalezar'),
+                        labelStyle: TextStyle(),
                         border: OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.number,
@@ -384,7 +385,7 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                       controller: remainingController,
                       decoration: const InputDecoration(
                         labelText: 'المتبقي',
-                        labelStyle: TextStyle(fontFamily: 'Lalezar'),
+                        labelStyle: TextStyle(),
                         border: OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.number,
@@ -408,7 +409,7 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                             ),
                             const Text(
                               'نثريات',
-                              style: TextStyle(fontFamily: 'Lalezar'),
+                              style: TextStyle(),
                               textDirection: TextDirection.rtl,
                             ),
                           ],
@@ -428,7 +429,7 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                             ),
                             const Text(
                               'مشروبات',
-                              style: TextStyle(fontFamily: 'Lalezar'),
+                              style: TextStyle(),
                               textDirection: TextDirection.rtl,
                             ),
                           ],
@@ -485,14 +486,14 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
         title: const Text(
           'تأكيد الحذف',
           textDirection: TextDirection.rtl,
-          style: TextStyle(fontFamily: 'Lalezar'),
+          style: TextStyle(),
         ),
         content: Text(
           itemsToDelete.length > 1
               ? 'هل أنت متأكد أنك تريد حذف ${itemsToDelete.length} أصناف؟'
               : 'هل أنت متأكد أنك تريد حذف هذا الصنف؟',
           textDirection: TextDirection.rtl,
-          style: const TextStyle(fontFamily: 'Lalezar'),
+          style: const TextStyle(),
         ),
         actions: [
           createButton(
@@ -566,6 +567,7 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
         _handleBack();
       },
       child: BackgroundScaffold(
+        title: pageTitle,
         backgroundImagePath: widget.backgroundImagePath,
         child: Stack(
           children: [
@@ -575,17 +577,6 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      pageTitle,
-                      style: const TextStyle(
-                        fontSize: 25,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                        fontFamily: 'DancingScript',
-                      ),
-                      textDirection: TextDirection.rtl,
-                    ),
-                    const SizedBox(height: 10),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: DataTable(
@@ -612,21 +603,21 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                             ),
                           ),
                           const DataColumn(
-                              label: Text('مسلسل', style: TextStyle(fontFamily: 'Lalezar'))),
+                              label: Text('مسلسل', style: TextStyle())),
                           const DataColumn(
-                              label: Text('اسم الصنف', style: TextStyle(fontFamily: 'Lalezar'))),
+                              label: Text('اسم الصنف', style: TextStyle())),
                           const DataColumn(
-                              label: Text('الوحدة', style: TextStyle(fontFamily: 'Lalezar'))),
+                              label: Text('الوحدة', style: TextStyle())),
                           const DataColumn(
-                              label: Text('الكمية', style: TextStyle(fontFamily: 'Lalezar'))),
+                              label: Text('الكمية', style: TextStyle())),
                           const DataColumn(
-                              label: Text('سعر الوحدة', style: TextStyle(fontFamily: 'Lalezar'))),
+                              label: Text('سعر الوحدة', style: TextStyle())),
                           const DataColumn(
-                              label: Text('السعر الإجمالي', style: TextStyle(fontFamily: 'Lalezar'))),
+                              label: Text('السعر الإجمالي', style: TextStyle())),
                           const DataColumn(
-                              label: Text('الاستهلاك', style: TextStyle(fontFamily: 'Lalezar'))),
+                              label: Text('الاستهلاك', style: TextStyle())),
                           const DataColumn(
-                              label: Text('المتبقي', style: TextStyle(fontFamily: 'Lalezar'))),
+                              label: Text('المتبقي', style: TextStyle())),
                         ],
                         rows: _rows.asMap().entries.map((entry) {
                           final index = entry.key;
@@ -659,7 +650,7 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                               DataCell(Text(row['item_name'] ?? '')),
                               DataCell(Text(row['unit'] ?? '',
                                   style: const TextStyle(
-                                      color: Colors.black, fontFamily: 'Lalezar'))),
+                                      color: Colors.black, ))),
                               DataCell(Text(formatNumber(row['quantity']))),
                               DataCell(Text(formatNumber(row['price']))),
                               DataCell(Text(formatNumber(row['total_price']))),
@@ -674,22 +665,26 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        createButton(
-                          text: 'تعديل',
-                          onPressed: _editItem,
-                          bgColor: Colors.amber[700]!,
-                          width: buttonWidth / 3,
-                          height: buttonHeight,
-                        ),
-                        const SizedBox(width: 20),
-                        createButton(
-                          text: 'حذف',
-                          onPressed: _deleteItem,
-                          bgColor: Colors.red[700]!,
-                          width: buttonWidth / 3,
-                          height: buttonHeight,
-                        ),
-                        const SizedBox(width: 20),
+                        if (AuthService.instance.canEdit) ...[
+                          createButton(
+                            text: 'تعديل',
+                            onPressed: _editItem,
+                            bgColor: Colors.amber[700]!,
+                            width: buttonWidth / 3,
+                            height: buttonHeight,
+                          ),
+                          const SizedBox(width: 20),
+                        ],
+                        if (AuthService.instance.canDelete) ...[
+                          createButton(
+                            text: 'حذف',
+                            onPressed: _deleteItem,
+                            bgColor: Colors.red[700]!,
+                            width: buttonWidth / 3,
+                            height: buttonHeight,
+                          ),
+                          const SizedBox(width: 20),
+                        ],
                         createButton(
                           text: 'رجوع',
                           onPressed: _handleBack,

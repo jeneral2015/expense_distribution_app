@@ -259,6 +259,7 @@ class _DrinkPageState extends State<DrinkPage> {
         widget.navigateToDistribute_expenses();
       },
       child: BackgroundScaffold(
+        title: 'توزيع المشروبات',
         backgroundImagePath: widget.backgroundImagePath,
         child: Stack(
           children: [
@@ -269,24 +270,14 @@ class _DrinkPageState extends State<DrinkPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const Text(
-                      'توزيع المشروبات',
-                      style: TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                        fontFamily: 'DancingScript',
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
+
                     TextField(
                       controller: _dateController,
                       decoration: InputDecoration(
                         labelText: 'التاريخ',
                         labelStyle: const TextStyle(
                           color: Colors.white,
-                          fontFamily: 'Lalezar',
+                          
                         ),
                         filled: true,
                         fillColor: Colors.black.withOpacity(0.7),
@@ -296,7 +287,7 @@ class _DrinkPageState extends State<DrinkPage> {
                       ),
                       style: const TextStyle(
                         color: Colors.white,
-                        fontFamily: 'Lalezar',
+                        
                       ),
                       readOnly: true,
                       onTap: () async {
@@ -325,7 +316,7 @@ class _DrinkPageState extends State<DrinkPage> {
                             'حدث خطأ أثناء تحميل الأصناف',
                             style: TextStyle(
                               color: Colors.black,
-                              fontFamily: 'Lalezar',
+                              
                             ),
                           );
                         } else if (!snapshot.hasData ||
@@ -334,7 +325,7 @@ class _DrinkPageState extends State<DrinkPage> {
                             'لا توجد مشروبات متاحة',
                             style: TextStyle(
                               color: Colors.black,
-                              fontFamily: 'Lalezar',
+                              
                             ),
                           );
                         }
@@ -344,7 +335,7 @@ class _DrinkPageState extends State<DrinkPage> {
                             labelText: 'اختر المشروب',
                             labelStyle: const TextStyle(
                               color: Colors.white,
-                              fontFamily: 'Lalezar',
+                              
                             ),
                             filled: true,
                             fillColor: Colors.black.withOpacity(0.7),
@@ -356,7 +347,7 @@ class _DrinkPageState extends State<DrinkPage> {
                             'اختر المشروب',
                             style: TextStyle(
                               color: Colors.white,
-                              fontFamily: 'Lalezar',
+                              
                             ),
                           ),
                           items: snapshot.data!
@@ -367,7 +358,7 @@ class _DrinkPageState extends State<DrinkPage> {
                                       row['item_name'],
                                       style: const TextStyle(
                                         color: Colors.white,
-                                        fontFamily: 'Lalezar',
+                                        
                                       ),
                                       textDirection: ui.TextDirection.rtl,
                                     ),
@@ -380,7 +371,7 @@ class _DrinkPageState extends State<DrinkPage> {
                           },
                           style: const TextStyle(
                             color: Colors.white,
-                            fontFamily: 'Lalezar',
+                            
                           ),
                           dropdownColor: Colors.black.withOpacity(0.7),
                           isExpanded: true,
@@ -397,7 +388,7 @@ class _DrinkPageState extends State<DrinkPage> {
                         alignLabelWithHint: true,
                         labelStyle: const TextStyle(
                           color: Colors.white,
-                          fontFamily: 'Lalezar',
+                          
                         ),
                         filled: true,
                         fillColor: Colors.black.withOpacity(0.7),
@@ -407,7 +398,7 @@ class _DrinkPageState extends State<DrinkPage> {
                       ),
                       style: const TextStyle(
                         color: Colors.white,
-                        fontFamily: 'Lalezar',
+                        
                       ),
                       keyboardType: TextInputType.number,
                       textDirection: ui.TextDirection.rtl,
@@ -427,7 +418,7 @@ class _DrinkPageState extends State<DrinkPage> {
                             'حدث خطأ أثناء تحميل الأعضاء',
                             style: TextStyle(
                               color: Colors.black,
-                              fontFamily: 'Lalezar',
+                              
                             ),
                           );
                         } else if (!snapshot.hasData ||
@@ -436,7 +427,7 @@ class _DrinkPageState extends State<DrinkPage> {
                             'لا يوجد أعضاء متاحين',
                             style: TextStyle(
                               color: Colors.black,
-                              fontFamily: 'Lalezar',
+                              
                             ),
                           );
                         }
@@ -446,7 +437,7 @@ class _DrinkPageState extends State<DrinkPage> {
                             labelText: 'اختر الشخص',
                             labelStyle: const TextStyle(
                               color: Colors.white,
-                              fontFamily: 'Lalezar',
+                              
                             ),
                             filled: true,
                             fillColor: Colors.black.withOpacity(0.7),
@@ -458,7 +449,7 @@ class _DrinkPageState extends State<DrinkPage> {
                             'اختر الشخص',
                             style: TextStyle(
                               color: Colors.white,
-                              fontFamily: 'Lalezar',
+                              
                             ),
                             textDirection: ui.TextDirection.rtl,
                           ),
@@ -472,7 +463,7 @@ class _DrinkPageState extends State<DrinkPage> {
                                 '${index + 1} - ${row['rank'] ?? ''} ${row['name'] ?? ''}',
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontFamily: 'Lalezar',
+                                  
                                 ),
                                 textDirection: ui.TextDirection.rtl,
                               ),
@@ -485,7 +476,7 @@ class _DrinkPageState extends State<DrinkPage> {
                           },
                           style: const TextStyle(
                             color: Colors.white,
-                            fontFamily: 'Lalezar',
+                            
                           ),
                           dropdownColor: Colors.black.withOpacity(0.7),
                           isExpanded: true,

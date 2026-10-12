@@ -8,6 +8,7 @@ import '../../../utils/excel_export.dart';
 import '../../../utils/undo_manager.dart';
 import '../../../utils/helpers.dart';
 import '../../../utils/logger.dart' show AppLogger;
+import '../../../services/auth_service.dart';
 
 class DrinksReport extends StatefulWidget {
   final DatabaseManager db;
@@ -1049,26 +1050,30 @@ class _DrinksReportState extends State<DrinksReport> {
                               runSpacing: 10,
                               alignment: WrapAlignment.center,
                               children: [
-                                createButton(
-                                  text: 'تعديل السجل',
-                                  onPressed: _editSelectedDrink,
-                                  bgColor: Colors.orange[700]!,
-                                  textColor: Colors.white,
-                                  width: MediaQuery.of(context).size.width * 0.35,
-                                  height: 45,
-                                  icon: Icons.edit,
-                                  iconColor: Colors.white,
-                                ),
-                                createButton(
-                                  text: 'حذف السجلات',
-                                  onPressed: _deleteSelectedDrinks,
-                                  bgColor: Colors.red[700]!,
-                                  textColor: Colors.white,
-                                  width: MediaQuery.of(context).size.width * 0.35,
-                                  height: 45,
-                                  icon: Icons.delete,
-                                  iconColor: Colors.white,
-                                ),
+                                if (AuthService.instance.canEdit) ...[
+                                  createButton(
+                                    text: 'تعديل السجل',
+                                    onPressed: _editSelectedDrink,
+                                    bgColor: Colors.orange[700]!,
+                                    textColor: Colors.white,
+                                    width: MediaQuery.of(context).size.width * 0.35,
+                                    height: 45,
+                                    icon: Icons.edit,
+                                    iconColor: Colors.white,
+                                  ),
+                                ],
+                                if (AuthService.instance.canDelete) ...[
+                                  createButton(
+                                    text: 'حذف السجلات',
+                                    onPressed: _deleteSelectedDrinks,
+                                    bgColor: Colors.red[700]!,
+                                    textColor: Colors.white,
+                                    width: MediaQuery.of(context).size.width * 0.35,
+                                    height: 45,
+                                    icon: Icons.delete,
+                                    iconColor: Colors.white,
+                                  ),
+                                ],
                               ],
                             ),
                           ],

@@ -27,12 +27,12 @@ class ArchivedDataPage extends StatefulWidget {
 class _ArchivedDataPageState extends State<ArchivedDataPage> {
   final TextStyle textStyle = const TextStyle(
     fontSize: 15,
-    fontFamily: 'DancingScript',
+    
   );
   final TextStyle titleStyle = const TextStyle(
     fontSize: 28,
     fontWeight: FontWeight.bold,
-    fontFamily: 'DancingScript',
+    
   );
 
   void showExpensesReport(BuildContext context, DatabaseManager db, int archiveKeyId) {

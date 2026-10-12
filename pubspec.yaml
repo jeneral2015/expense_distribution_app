@@ -8,7 +8,11 @@ dependencies:
   flutter_lints: ^2.0.0
   flutter:
     sdk: flutter
+  firebase_core: ^3.15.2
+  firebase_auth: ^5.7.0
+  cloud_firestore: ^5.6.12
   sqflite: ^2.3.3+1
+  sqflite_common_ffi_web: ^0.4.5+4
   window_manager: ^0.3.9
   path: ^1.9.0
   logging: ^1.2.0
@@ -40,6 +44,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/3.jpg
+    - assets/app_icon.png
     - assets/1.ttf
   fonts:
     - family: Cairo

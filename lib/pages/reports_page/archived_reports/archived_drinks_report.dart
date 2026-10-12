@@ -25,12 +25,12 @@ class ArchivedDrinksReport extends StatefulWidget {
 class _ArchivedDrinksReportState extends State<ArchivedDrinksReport> {
   final TextStyle textStyle = const TextStyle(
     fontSize: 15,
-    fontFamily: 'DancingScript',
+    
   );
   final TextStyle titleStyle = const TextStyle(
     fontSize: 28,
     fontWeight: FontWeight.bold,
-    fontFamily: 'DancingScript',
+    
   );
 
   List<Map<String, dynamic>> drinks = [];

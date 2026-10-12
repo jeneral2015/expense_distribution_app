@@ -108,7 +108,7 @@ void _navigateToArchivedData() {
 
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message, style: const TextStyle(fontFamily: 'DancingScript'))),
+      SnackBar(content: Text(message, style: const TextStyle())),
     );
   }
 
@@ -154,7 +154,7 @@ void _navigateToArchivedData() {
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        fontFamily: 'DancingScript',
+                        
                         color: Colors.black,
                       ),
                       textAlign: TextAlign.center,
@@ -164,7 +164,7 @@ void _navigateToArchivedData() {
                       width: 300,
                       child: DropdownButton<String>(
                         value: _selectedArchive,
-                        hint: const Text('اختر من القائمة', style: TextStyle(fontFamily: 'DancingScript')),
+                        hint: const Text('اختر من القائمة', style: TextStyle()),
                         isExpanded: true,
                         items: _archiveOptions.map((option) {
                           return DropdownMenuItem<String>(
@@ -173,7 +173,7 @@ void _navigateToArchivedData() {
                             child: Text(
                               option['text'],
                               style: TextStyle(
-                                fontFamily: 'DancingScript',
+                                
                                 color: option['archive_key_id'].isEmpty ? Colors.grey : Colors.black,
                               ),
                             ),

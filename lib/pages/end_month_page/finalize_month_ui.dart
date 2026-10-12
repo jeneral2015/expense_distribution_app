@@ -156,7 +156,7 @@ class FinalizeMonthUI {
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
       child: Text(
         text,
-        style: const TextStyle(fontSize: 14),
+        style: const TextStyle(fontSize: 14, color: Colors.black),
         textAlign: TextAlign.center,
       ),
     );

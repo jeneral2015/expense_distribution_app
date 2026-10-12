@@ -33,6 +33,7 @@ class _EndMonthPageState extends State<EndMonthPage> {
         context.go('/main');
       },
       child: BackgroundScaffold(
+        title: 'تقفيل الشهر',
         backgroundImagePath: widget.backgroundImagePath,
         child: Stack(
           children: [
@@ -53,17 +54,7 @@ class _EndMonthPageState extends State<EndMonthPage> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         const SizedBox(height: 20),
-                        const Text(
-                          'تقفيل الشهر',
-                          style: TextStyle(
-                            fontSize: 40,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            fontFamily: 'DancingScript',
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 100),
+
                         // استخدم Wrap بدلاً من Row
                         Wrap(
                           alignment: WrapAlignment.center,
