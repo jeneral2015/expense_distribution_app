@@ -372,7 +372,7 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                       ),
                       keyboardType: TextInputType.number,
                       textDirection: TextDirection.rtl,
-                      enabled: false,
+                      enabled: widget.isMiscellaneous,
                       onChanged: onConsumptionChanged,
                     ),
                     const SizedBox(height: 10),
@@ -385,6 +385,7 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                       ),
                       keyboardType: TextInputType.number,
                       textDirection: TextDirection.rtl,
+                      enabled: false,
                     ),
                     const SizedBox(height: 10),
                     Row(

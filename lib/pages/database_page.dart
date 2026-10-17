@@ -285,6 +285,7 @@ class _DatabasePageState extends State<DatabasePage> {
     final double buttonWidth = isPortrait ? maxWidth * 0.7 : maxWidth * 0.35;
     final double buttonHeight = isPortrait ? 55.0 : 65.0;
     final double spacing = isPortrait ? 24.0 : 32.0;
+    final bool isObserver = widget.auth.role == 'مراقب';
 
     return PopScope(
       canPop: false,
@@ -305,18 +306,19 @@ class _DatabasePageState extends State<DatabasePage> {
                     Wrap(
                       alignment: WrapAlignment.center,
                       spacing: spacing,
-                        runSpacing: spacing,
-                        children: [
-                          SizedBox(
-                            width: buttonWidth,
-                            height: buttonHeight,
-                            child: createButton(
-                              text: 'تصدير قاعدة البيانات',
-                              icon: Icons.share,
-                              onPressed: _exportDatabase,
-                              bgColor: const Color.fromARGB(255, 2, 102, 233),
-                            ),
+                      runSpacing: spacing,
+                      children: [
+                        SizedBox(
+                          width: buttonWidth,
+                          height: buttonHeight,
+                          child: createButton(
+                            text: 'تصدير قاعدة البيانات',
+                            icon: Icons.share,
+                            onPressed: _exportDatabase,
+                            bgColor: const Color.fromARGB(255, 2, 102, 233),
                           ),
+                        ),
+                        if (!isObserver) ...[
                           SizedBox(
                             width: buttonWidth,
                             height: buttonHeight,
@@ -338,7 +340,8 @@ class _DatabasePageState extends State<DatabasePage> {
                             ),
                           ),
                         ],
-                      ),
+                      ],
+                    ),
                     if (DefaultFirebaseOptions.isConfigured) ...[
                       const SizedBox(height: 24),
 
@@ -347,22 +350,23 @@ class _DatabasePageState extends State<DatabasePage> {
                           padding: EdgeInsets.all(16),
                           child: CircularProgressIndicator(),
                         )
-                      else
+                      else ...[
                         Wrap(
                           alignment: WrapAlignment.center,
                           spacing: spacing,
                           runSpacing: spacing,
                           children: [
-                            SizedBox(
-                              width: buttonWidth,
-                              height: buttonHeight,
-                              child: createButton(
-                                text: 'رفع للسحابة',
-                                icon: Icons.cloud_upload,
-                                onPressed: _confirmAndUploadCloud,
-                                bgColor: const Color(0xFF2563EB),
+                            if (!isObserver)
+                              SizedBox(
+                                width: buttonWidth,
+                                height: buttonHeight,
+                                child: createButton(
+                                  text: 'رفع للسحابة',
+                                  icon: Icons.cloud_upload,
+                                  onPressed: _confirmAndUploadCloud,
+                                  bgColor: const Color(0xFF2563EB),
+                                ),
                               ),
-                            ),
                             SizedBox(
                               width: buttonWidth,
                               height: buttonHeight,
@@ -375,6 +379,22 @@ class _DatabasePageState extends State<DatabasePage> {
                             ),
                           ],
                         ),
+                        if (isObserver) ...[
+                          const SizedBox(height: 8),
+                          const Text(
+                            'حساب مراقب: الصلاحية المتاحة هي تنزيل البيانات من السحابة وتصديرها فقط.',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              shadows: [
+                                Shadow(color: Colors.black54, blurRadius: 4),
+                              ],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ],
                     ],
                     const SizedBox(height: 40),
                     createButton(

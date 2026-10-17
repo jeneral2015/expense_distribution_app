@@ -308,6 +308,10 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
 
         final double newQtyCumulative = oldQty + addQty; // إجمالي ما دخل من أول الشهر
 
+        if (_isMiscellaneous) {
+          newConsumption = oldConsumption + addQty;
+        }
+
         // Check if new consumption exceeds total quantity
         if (newConsumption > newQtyCumulative) {
           AppLogger.logInfo('Consumption exceeds available quantity: $newConsumption > $newQtyCumulative');
@@ -316,18 +320,18 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
         }
 
         // Calculate new remaining
-        final double newRemaining = newQtyCumulative - newConsumption;
+        final double newRemaining = _isMiscellaneous ? 0.0 : (newQtyCumulative - newConsumption);
 
         if (_isMiscellaneous) {
-          final double newUnitPrice = oldPrice; // لا نعيد حساب السعر لأنه لم يتغير المخزون
           final double newTotalSpent = oldTotalSpent + addTotalPrice; // إجمالي مصروفات الشهر
+          final double newUnitPrice = newQtyCumulative > 0 ? (newTotalSpent / newQtyCumulative) : oldPrice;
 
           await widget.db.database!.update(
             'expenses',
             {
               'quantity': newQtyCumulative,
               'consumption': newConsumption,
-              'remaining': newRemaining,
+              'remaining': 0.0,
               'price': newUnitPrice,
               'total_price': newTotalSpent, // تراكمي للصرف من أول الشهر
               'is_miscellaneous': 1,

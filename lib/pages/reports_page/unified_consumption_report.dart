@@ -30,6 +30,7 @@ class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
   double totalMisc = 0.0;
   double totalConsumption = 0.0;
   double totalContributions = 0.0;
+  double totalRemainingInventory = 0.0;
   double totalRemainingCash = 0.0;
 
   bool _loading = true;
@@ -76,6 +77,16 @@ class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
           ORDER BY ${AppRanks.sqlRankOrder('m.rank')}, m.name ASC
         ''';
         summaryList = await widget.db.fetchAll(query, [widget.archiveKeyId, widget.archiveKeyId]);
+
+        const remQuery = '''
+          SELECT COALESCE(SUM(remaining * price), 0) AS total_remaining
+          FROM expenses_archive
+          WHERE archive_key_id = ? AND remaining > 0
+        ''';
+        final remResults = await widget.db.fetchAll(remQuery, [widget.archiveKeyId]);
+        totalRemainingInventory = remResults.isNotEmpty
+            ? Formatters.toDouble(remResults[0]['total_remaining'])
+            : 0.0;
       } else {
         final query = '''
           WITH MealTotals AS (
@@ -107,6 +118,16 @@ class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
           ORDER BY ${AppRanks.sqlRankOrder('m.rank')}, m.name ASC
         ''';
         summaryList = await widget.db.fetchAll(query);
+
+        const remQuery = '''
+          SELECT COALESCE(SUM(remaining * price), 0) AS total_remaining
+          FROM expenses
+          WHERE remaining > 0
+        ''';
+        final remResults = await widget.db.fetchAll(remQuery);
+        totalRemainingInventory = remResults.isNotEmpty
+            ? Formatters.toDouble(remResults[0]['total_remaining'])
+            : 0.0;
       }
 
       totalMeals = summaryList.fold(0.0, (s, i) => s + Formatters.toDouble(i['total_meals']));
@@ -114,7 +135,7 @@ class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
       totalMisc = summaryList.fold(0.0, (s, i) => s + Formatters.toDouble(i['total_miscellaneous']));
       totalConsumption = summaryList.fold(0.0, (s, i) => s + Formatters.toDouble(i['total_consumption']));
       totalContributions = summaryList.fold(0.0, (s, i) => s + Formatters.toDouble(i['total_contribution']));
-      totalRemainingCash = summaryList.fold(0.0, (s, i) => s + Formatters.toDouble(i['remaining_cash']));
+      totalRemainingCash = totalContributions - (totalConsumption + totalRemainingInventory);
     } catch (e) {
       if (mounted) {
         showAppSnackBar(context, 'خطأ أثناء جلب ملخص الاستهلاك: $e', isError: true);
@@ -162,6 +183,10 @@ class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
       final extraInfo = <String, String>{
         'نوع التقرير': isArchived ? 'تقرير استهلاك الأعضاء (مؤرشف)' : 'تقرير استهلاك الأعضاء (الشهر الحالي)',
         'تاريخ التصدير': DateTime.now().toString().substring(0, 19),
+        'إجمالي المساهمات': '${totalContributions.toAppString()} ج.م',
+        'إجمالي الاستهلاك': '${totalConsumption.toAppString()} ج.م',
+        'إجمالي المتبقيات': '${totalRemainingInventory.toAppString()} ج.م',
+        'صافي النقدية المتبقية': '${totalRemainingCash.toAppString()} ج.م',
       };
 
       if (isArchived && archiveName.isNotEmpty) {
@@ -169,9 +194,11 @@ class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
         extraInfo['الفترة'] = '$startDate إلى $endDate';
       }
 
+      final memberRemainingTotal = summaryList.fold(0.0, (s, i) => s + Formatters.toDouble(i['remaining_cash']));
+
       final totals = [
         [
-          'الإجمالي العام',
+          'إجمالي استهلاك ومساهمات الأعضاء',
           '',
           '',
           totalMeals,
@@ -179,6 +206,28 @@ class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
           totalMisc,
           totalConsumption,
           totalContributions,
+          memberRemainingTotal,
+        ],
+        [
+          'إجمالي المتبقيات (المخزون المتبقي)',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          totalRemainingInventory,
+        ],
+        [
+          'صافي النقدية المتبقية (النهائي)',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
           totalRemainingCash,
         ]
       ];
@@ -298,6 +347,7 @@ class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
                         _buildMetricBox('إجمالي النثريات', totalMisc, Colors.orange),
                         _buildMetricBox('إجمالي الاستهلاك', totalConsumption, Colors.indigo),
                         _buildMetricBox('إجمالي المساهمات', totalContributions, Colors.blue),
+                        _buildMetricBox('إجمالي المتبقيات', totalRemainingInventory, Colors.purple),
                         _buildMetricBox(
                           'صافي النقدية المتبقية',
                           totalRemainingCash,
