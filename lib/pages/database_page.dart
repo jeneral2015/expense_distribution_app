@@ -9,6 +9,7 @@ import '../utils/database.dart';
 import '../utils/button_utils.dart';
 import '../utils/background_scaffold.dart';
 import '../utils/file_downloader.dart';
+import '../core/utils/snackbar_utils.dart';
 import 'dart:io' as io;
 
 class DatabasePage extends StatefulWidget {
@@ -139,7 +140,7 @@ class _DatabasePageState extends State<DatabasePage> {
   }
 
   void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    showAppSnackBar(context, msg);
   }
 
   Future<void> _exportDatabase() async {
@@ -233,9 +234,7 @@ class _DatabasePageState extends State<DatabasePage> {
 
   Future<void> _deleteDatabase() async {
     if (kIsWeb) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('هذه الخاصية غير مدعومة على الويب')),
-      );
+      _snack('هذه الخاصية غير مدعومة على الويب');
       return;
     }
 
@@ -271,14 +270,10 @@ class _DatabasePageState extends State<DatabasePage> {
       Navigator.pop(context);
       setState(() {});
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حذف قاعدة البيانات وإنشاء قاعدة جديدة فارغة!')),
-      );
+      _snack('تم حذف قاعدة البيانات وإنشاء قاعدة جديدة فارغة!');
     } catch (e) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ أثناء الحذف: $e')),
-      );
+      _snack('حدث خطأ أثناء الحذف: $e');
     }
   }
 
@@ -300,9 +295,7 @@ class _DatabasePageState extends State<DatabasePage> {
       child: BackgroundScaffold(
         title: 'إدارة قاعدة البيانات',
         backgroundImagePath: 'assets/3.jpg',
-        child: Stack(
-          children: [
-            Center(
+        child: Center(
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -394,15 +387,6 @@ class _DatabasePageState extends State<DatabasePage> {
                 ),
               ),
             ),
-            Positioned(
-              top: 20,
-              left: 20,
-              child: createHomeButton(
-                onPressed: widget.navigateToMain,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

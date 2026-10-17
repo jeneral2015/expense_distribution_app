@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../utils/button_utils.dart';
 import '../utils/database.dart';
 import '../utils/background_scaffold.dart';
 import '../utils/logger.dart';
 import '../services/auth_service.dart';
+import '../core/utils/formatters.dart';
+import '../core/utils/snackbar_utils.dart';
 
 class ShowExpensesPage extends StatefulWidget {
   final DatabaseManager db;
@@ -39,18 +40,12 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
     _fetchExpensesData();
   }
 
-  String formatNumber(num? number) {
-    if (number == null) return '';
-    if (number is int) return number.toString();
-    final d = number.toDouble();
-    if (d == d.toInt()) return d.toInt().toString();
-    return d.toStringAsFixed(2);
-  }
+  String formatNumber(num? number) => Formatters.toAppString(number);
 
   double? _parseNum(String text) {
-    final t = text.trim().replaceAll(',', '.');
+    final t = text.trim();
     if (t.isEmpty) return null;
-    return double.tryParse(t);
+    return Formatters.toDouble(t);
   }
 
   Future<void> _fetchExpensesData() async {
@@ -545,9 +540,7 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message, textDirection: TextDirection.rtl)),
-    );
+    showAppSnackBar(context, message);
   }
 
   @override
@@ -569,9 +562,7 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
       child: BackgroundScaffold(
         title: pageTitle,
         backgroundImagePath: widget.backgroundImagePath,
-        child: Stack(
-          children: [
-            Center(
+        child: Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -698,15 +689,6 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                 ),
               ),
             ),
-            Positioned(
-              top: 20,
-              left: 20,
-              child: createHomeButton(
-                onPressed: () => context.go('/main'),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

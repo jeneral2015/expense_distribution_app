@@ -1,32 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../../../utils/button_utils.dart';
 import '../../../utils/database.dart';
 import '../../../utils/background_scaffold.dart';
-import 'expenses_report.dart';
-import 'remaining_report.dart';
-import 'meals_report.dart';
-import 'drinks_report.dart';
-import 'consumption_report.dart';
-import 'member_consumption.dart';
+import '../unified_expenses_report.dart';
+import '../unified_remaining_report.dart';
+import '../unified_meals_report.dart';
+import '../unified_drinks_report.dart';
+import '../unified_consumption_report.dart';
+import '../unified_member_consumption_report.dart';
 
 class CurrentReportsPage extends StatefulWidget {
   final DatabaseManager db;
 
   const CurrentReportsPage({
-    Key? key,
+    super.key,
     required this.db,
-  }) : super(key: key);
+  });
 
   @override
-  _CurrentReportsPageState createState() => _CurrentReportsPageState();
+  State<CurrentReportsPage> createState() => _CurrentReportsPageState();
 }
 
 class _CurrentReportsPageState extends State<CurrentReportsPage> {
-  final TextStyle textStyle = const TextStyle(
-    fontSize: 15,
-    fontFamily: 'Cairo',
-  );
+  final TextStyle textStyle = const TextStyle(fontSize: 15, fontFamily: 'Cairo');
 
   TextStyle getTitleStyle(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
@@ -37,243 +33,89 @@ class _CurrentReportsPageState extends State<CurrentReportsPage> {
     );
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _checkDatabaseConnection();
-  }
-
-  Future<void> _checkDatabaseConnection() async {
-    try {
-      await widget.db.fetchAll('SELECT 1');
-    } catch (e) {
-      showSnackBar('خطأ في الاتصال بقاعدة البيانات: $e');
-    }
-  }
-
-  void showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: textStyle,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-    );
-  }
-
-  void navigateToParent() {
-    Navigator.pop(context);
-  }
-
-  void showExpensesReport(BuildContext context, DatabaseManager db) {
+  void _pushPage(Widget page) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => ExpensesReport(db: db),
-      ),
-    );
-  }
-
-  void showRemainingReport(BuildContext context, DatabaseManager db) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => RemainingReport(db: db),
-      ),
-    );
-  }
-
-  void showMealsReport(BuildContext context, DatabaseManager db) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MealsReport(db: db),
-      ),
-    );
-  }
-
-  void showDrinksReport(BuildContext context, DatabaseManager db) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DrinksReport(db: db),
-      ),
-    );
-  }
-
-  void showConsumptionReport(BuildContext context, DatabaseManager db) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ConsumptionReport(db: db),
-      ),
-    );
-  }
-
-  void showMemberConsumption(BuildContext context, DatabaseManager db) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MemberConsumption(db: db),
-      ),
+      MaterialPageRoute(builder: (context) => page),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
-    final double screenHeight = MediaQuery.of(context).size.height;
-    final double buttonWidth = screenWidth < 600 ? screenWidth * 0.4 : screenWidth * 0.35;
-    final double padding = screenWidth < 400 ? 8.0 : 16.0;
-    final double spacing = screenWidth < 400 ? 8.0 : 10.0;
-    final double runSpacing = screenHeight < 600 ? 30.0 : 40.0;
+    final double buttonWidth =
+        screenWidth < 600 ? screenWidth * 0.42 : screenWidth * 0.35;
+    const double spacing = 12.0;
+    const double runSpacing = 16.0;
 
     return BackgroundScaffold(
-      backgroundImagePath: 'assets/3.jpg',
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Stack(
-          children: [
-            Center(
-              child: Container(
-                constraints: BoxConstraints(
-                  maxWidth: screenWidth * 0.9,
-                  maxHeight: screenHeight * 0.8,
-                ),
-                padding: EdgeInsets.symmetric(horizontal: padding, vertical: padding),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: screenWidth * 0.9),
-                      child: Text(
-                        'تقارير الشهر الحالي',
-                        style: getTitleStyle(context).copyWith(color: Colors.black),
-                        textAlign: TextAlign.center,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    SizedBox(height: runSpacing),
-                    Wrap(
-                      spacing: spacing,
-                      runSpacing: runSpacing,
-                      alignment: WrapAlignment.center,
-                      runAlignment: WrapAlignment.center,
-                      children: [
-                        createButton(
-                          text: 'تقرير المصروفات',
-                          onPressed: () => showExpensesReport(context, widget.db),
-                          bgColor: Colors.blue[700]!,
-                          textColor: Colors.white,
-                          width: buttonWidth,
-                          height: 50,
-                          icon: Icons.receipt,
-                          iconColor: Colors.white,
-                        ),
-                        createButton(
-                          text: 'تقرير المتبقيات',
-                          onPressed: () => showRemainingReport(context, widget.db),
-                          bgColor: Colors.green[700]!,
-                          textColor: Colors.white,
-                          width: buttonWidth,
-                          height: 50,
-                          icon: Icons.inventory,
-                          iconColor: Colors.white,
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: runSpacing),
-                    Wrap(
-                      spacing: spacing,
-                      runSpacing: runSpacing,
-                      alignment: WrapAlignment.center,
-                      runAlignment: WrapAlignment.center,
-                      children: [
-                        createButton(
-                          text: 'تقرير الوجبات',
-                          onPressed: () => showMealsReport(context, widget.db),
-                          bgColor: Colors.indigo[700]!,
-                          textColor: Colors.white,
-                          width: buttonWidth,
-                          height: 50,
-                          icon: Icons.restaurant,
-                          iconColor: Colors.white,
-                        ),
-                        createButton(
-                          text: 'تقرير المشروبات',
-                          onPressed: () => showDrinksReport(context, widget.db),
-                          bgColor: Colors.teal[700]!,
-                          textColor: Colors.white,
-                          width: buttonWidth,
-                          height: 50,
-                          icon: Icons.local_drink,
-                          iconColor: Colors.white,
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: runSpacing),
-                    Wrap(
-                      spacing: spacing,
-                      runSpacing: runSpacing,
-                      alignment: WrapAlignment.center,
-                      runAlignment: WrapAlignment.center,
-                      children: [
-                        createButton(
-                          text: 'تقرير استهلاك المشتركين',
-                          onPressed: () => showConsumptionReport(context, widget.db),
-                          bgColor: Colors.orange[700]!,
-                          textColor: Colors.white,
-                          width: buttonWidth,
-                          height: 50,
-                          icon: Icons.group,
-                          iconColor: Colors.white,
-                        ),
-                        createButton(
-                          text: 'تقرير استهلاك مشترك',
-                          onPressed: () => showMemberConsumption(context, widget.db),
-                          bgColor: Colors.purple[700]!,
-                          textColor: Colors.white,
-                          width: buttonWidth,
-                          height: 50,
-                          icon: Icons.person,
-                          iconColor: Colors.white,
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: runSpacing),
-                    Wrap(
-                      spacing: spacing,
-                      runSpacing: runSpacing,
-                      alignment: WrapAlignment.center,
-                      runAlignment: WrapAlignment.center,
-                      children: [
-                        createButton(
-                          text: 'رجوع',
-                          onPressed: navigateToParent,
-                          bgColor: Colors.red[700]!,
-                          textColor: Colors.white,
-                          width: buttonWidth,
-                          height: 50,
-                          icon: Icons.arrow_back,
-                          iconColor: Colors.white,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+      title: 'تقارير الشهر الحالي',
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'تقارير الشهر الحالي',
+                style: getTitleStyle(context),
+                textAlign: TextAlign.center,
               ),
-            ),
-            Positioned(
-              top: 20,
-              left: 20,
-              child: createHomeButton(
-                onPressed: () => context.go('/main'),
+              const SizedBox(height: 24),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: spacing,
+                runSpacing: runSpacing,
+                children: [
+                  createButton(
+                    text: 'تقرير المصروفات',
+                    onPressed: () => _pushPage(ExpensesReportPage(db: widget.db)),
+                    bgColor: Colors.green[700]!,
+                    width: buttonWidth,
+                  ),
+                  createButton(
+                    text: 'تقرير المتبقيات',
+                    onPressed: () => _pushPage(RemainingReportPage(db: widget.db)),
+                    bgColor: Colors.green[700]!,
+                    width: buttonWidth,
+                  ),
+                  createButton(
+                    text: 'تقرير الوجبات',
+                    onPressed: () => _pushPage(MealsReportPage(db: widget.db)),
+                    bgColor: Colors.green[700]!,
+                    width: buttonWidth,
+                  ),
+                  createButton(
+                    text: 'تقرير المشروبات',
+                    onPressed: () => _pushPage(DrinksReportPage(db: widget.db)),
+                    bgColor: Colors.green[700]!,
+                    width: buttonWidth,
+                  ),
+                  createButton(
+                    text: 'استهلاك مشترك',
+                    onPressed: () =>
+                        _pushPage(MemberConsumptionReportPage(db: widget.db)),
+                    bgColor: Colors.green[700]!,
+                    width: buttonWidth,
+                  ),
+                  createButton(
+                    text: 'تقرير الاستهلاك العام',
+                    onPressed: () =>
+                        _pushPage(ConsumptionReportPage(db: widget.db)),
+                    bgColor: Colors.green[700]!,
+                    width: buttonWidth,
+                  ),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 36),
+              createButton(
+                text: 'رجوع',
+                onPressed: () => Navigator.pop(context),
+                bgColor: Colors.red[700]!,
+                width: buttonWidth,
+              ),
+            ],
+          ),
         ),
       ),
     );

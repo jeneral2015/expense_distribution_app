@@ -1,289 +1,129 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../../../utils/button_utils.dart';
 import '../../../utils/database.dart';
-import 'archived_expenses_report.dart';
-import 'archived_remaining_report.dart';
-import 'archived_meals_report.dart';
-import 'archived_drinks_report.dart';
-import 'archived_consumption_report.dart';
-import 'archived_member_consumption.dart';
 import '../../../utils/background_scaffold.dart';
+import '../unified_expenses_report.dart';
+import '../unified_remaining_report.dart';
+import '../unified_meals_report.dart';
+import '../unified_drinks_report.dart';
+import '../unified_consumption_report.dart';
+import '../unified_member_consumption_report.dart';
 
-class ArchivedDataPage extends StatefulWidget {
+class ArchivedDataPage extends StatelessWidget {
   final DatabaseManager db;
   final int? archiveKeyId;
 
   const ArchivedDataPage({
-    Key? key,
+    super.key,
     required this.db,
     this.archiveKeyId,
-  }) : super(key: key);
+  });
 
-  @override
-  _ArchivedDataPageState createState() => _ArchivedDataPageState();
-}
-
-class _ArchivedDataPageState extends State<ArchivedDataPage> {
-  final TextStyle textStyle = const TextStyle(
-    fontSize: 15,
-    
-  );
-  final TextStyle titleStyle = const TextStyle(
-    fontSize: 28,
-    fontWeight: FontWeight.bold,
-    
-  );
-
-  void showExpensesReport(BuildContext context, DatabaseManager db, int archiveKeyId) {
+  void _pushPage(BuildContext context, Widget page) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => ArchivedExpensesReport(
-          db: db,
-          archiveKeyId: archiveKeyId,
-        ),
-      ),
-    );
-  }
-
-  void showRemainingReport(BuildContext context, DatabaseManager db, int archiveKeyId) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ArchivedRemainingReport(
-          db: db,
-          archiveKeyId: archiveKeyId,
-        ),
-      ),
-    );
-  }
-
-  void showMealsReport(BuildContext context, DatabaseManager db, int archiveKeyId) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ArchivedMealsReport(
-          db: db,
-          archiveKeyId: archiveKeyId,
-        ),
-      ),
-    );
-  }
-
-  void showDrinksReport(BuildContext context, DatabaseManager db, int archiveKeyId) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ArchivedDrinksReport(
-          db: db,
-          archiveKeyId: archiveKeyId,
-        ),
-      ),
-    );
-  }
-
-  void showConsumptionReport(BuildContext context, DatabaseManager db, int archiveKeyId) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ArchivedConsumptionReport(
-          db: db,
-          archiveKeyId: archiveKeyId,
-        ),
-      ),
-    );
-  }
-
-  void showMemberConsumption(BuildContext context, DatabaseManager db, int archiveKeyId) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ArchivedMemberConsumption(
-          db: db,
-          archiveKeyId: archiveKeyId,
-        ),
-      ),
-    );
-  }
-
-  void showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: textStyle,
-        ),
-      ),
-    );
-  }
-
-  void navigateToParent() {
-    Navigator.pop(context);
-  }
-
-  Future<Widget> getContent() async {
-    if (widget.archiveKeyId == null) {
-      showSnackBar('يرجى اختيار فترة أرشيف أولاً!');
-      return const SizedBox.shrink();
-    }
-
-    // Fetch archive info for the title
-    final archiveInfo = await widget.db.fetchAll(
-      'SELECT archive_name, start_date, end_date FROM archive_keys WHERE archive_key_id = ?',
-      [widget.archiveKeyId],
-    );
-
-    if (archiveInfo.isEmpty) {
-      showSnackBar('لا توجد بيانات لفترة الأرشيف المحددة!');
-      return const SizedBox.shrink();
-    }
-
-    final archiveName = archiveInfo[0]['archive_name'] as String;
-    final startDate = archiveInfo[0]['start_date'] as String;
-    final endDate = archiveInfo[0]['end_date'] as String;
-    final titleText = 'تقارير الأرشيف: $archiveName ($startDate إلى $endDate)';
-
-    return Column(
-      children: [
-        SizedBox(
-          height: MediaQuery.of(context).orientation == Orientation.portrait
-              ? MediaQuery.of(context).size.height * 0.1 // 10% من ارتفاع الشاشة في portrait
-              : MediaQuery.of(context).size.height * 0.05,
-        ),
-        Text(
-          titleText,
-          style: titleStyle.copyWith(color: const Color.fromARGB(255, 0, 0, 0)),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 30),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            createButton(
-              text: 'تقرير المصروفات',
-              onPressed: () => showExpensesReport(context, widget.db, widget.archiveKeyId!),
-              bgColor: Colors.blue[700]!,
-              textColor: Colors.white,
-              width: 200,
-              height: 50,
-              icon: Icons.receipt,
-              iconColor: Colors.white,
-            ),
-            const SizedBox(width: 10),
-            createButton(
-              text: 'تقرير المتبقيات',
-              onPressed: () => showRemainingReport(context, widget.db, widget.archiveKeyId!),
-              bgColor: Colors.green[700]!,
-              textColor: Colors.white,
-              width: 200,
-              height: 50,
-              icon: Icons.inventory,
-              iconColor: Colors.white,
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            createButton(
-              text: 'تقرير الوجبات',
-              onPressed: () => showMealsReport(context, widget.db, widget.archiveKeyId!),
-              bgColor: Colors.indigo[700]!,
-              textColor: Colors.white,
-              width: 200,
-              height: 50,
-              icon: Icons.restaurant,
-              iconColor: Colors.white,
-            ),
-            const SizedBox(width: 10),
-            createButton(
-              text: 'تقرير المشروبات',
-              onPressed: () => showDrinksReport(context, widget.db, widget.archiveKeyId!),
-              bgColor: Colors.teal[700]!,
-              textColor: Colors.white,
-              width: 200,
-              height: 50,
-              icon: Icons.local_drink,
-              iconColor: Colors.white,
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            createButton(
-              text: 'تقرير استهلاك المشتركين',
-              onPressed: () => showConsumptionReport(context, widget.db, widget.archiveKeyId!),
-              bgColor: Colors.orange[700]!,
-              textColor: Colors.white,
-              width: 200,
-              height: 50,
-              icon: Icons.group,
-              iconColor: Colors.white,
-            ),
-            const SizedBox(width: 10),
-            createButton(
-              text: 'تقرير استهلاك مشترك',
-              onPressed: () => showMemberConsumption(context, widget.db, widget.archiveKeyId!),
-              bgColor: Colors.purple[700]!,
-              textColor: Colors.white,
-              width: 200,
-              height: 50,
-              icon: Icons.person,
-              iconColor: Colors.white,
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            createButton(
-              text: 'رجوع',
-              onPressed: navigateToParent,
-              bgColor: Colors.red[700]!,
-              textColor: Colors.white,
-              width: 200,
-              height: 50,
-              icon: Icons.arrow_back,
-              iconColor: Colors.white,
-            ),
-          ],
-        ),
-      ],
+      MaterialPageRoute(builder: (context) => page),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double buttonWidth =
+        screenWidth < 600 ? screenWidth * 0.42 : screenWidth * 0.35;
+    const double spacing = 12.0;
+    const double runSpacing = 16.0;
+
     return BackgroundScaffold(
-      backgroundImagePath: 'assets/3.jpg',
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Stack(
-          children: [
-            FutureBuilder<Widget>(
-              future: getContent(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                return SingleChildScrollView(
-                  child: snapshot.data ?? const SizedBox.shrink(),
-                );
-              },
-            ),
-            Positioned(
-              top: 20,
-              left: 20,
-              child: createHomeButton(
-                onPressed: () => context.go('/main'),
+      title: 'بيانات الأرشيف',
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'تقارير الفترة المؤرشفة (ID: $archiveKeyId)',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Cairo',
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: spacing,
+                runSpacing: runSpacing,
+                children: [
+                  createButton(
+                    text: 'تقرير المصروفات',
+                    onPressed: () => _pushPage(
+                      context,
+                      ExpensesReportPage(db: db, archiveKeyId: archiveKeyId),
+                    ),
+                    bgColor: Colors.blue[700]!,
+                    width: buttonWidth,
+                  ),
+                  createButton(
+                    text: 'تقرير المتبقيات',
+                    onPressed: () => _pushPage(
+                      context,
+                      RemainingReportPage(db: db, archiveKeyId: archiveKeyId),
+                    ),
+                    bgColor: Colors.blue[700]!,
+                    width: buttonWidth,
+                  ),
+                  createButton(
+                    text: 'تقرير الوجبات',
+                    onPressed: () => _pushPage(
+                      context,
+                      MealsReportPage(db: db, archiveKeyId: archiveKeyId),
+                    ),
+                    bgColor: Colors.blue[700]!,
+                    width: buttonWidth,
+                  ),
+                  createButton(
+                    text: 'تقرير المشروبات',
+                    onPressed: () => _pushPage(
+                      context,
+                      DrinksReportPage(db: db, archiveKeyId: archiveKeyId),
+                    ),
+                    bgColor: Colors.blue[700]!,
+                    width: buttonWidth,
+                  ),
+                  createButton(
+                    text: 'استهلاك مشترك',
+                    onPressed: () => _pushPage(
+                      context,
+                      MemberConsumptionReportPage(
+                          db: db, archiveKeyId: archiveKeyId),
+                    ),
+                    bgColor: Colors.blue[700]!,
+                    width: buttonWidth,
+                  ),
+                  createButton(
+                    text: 'تقرير الاستهلاك العام',
+                    onPressed: () => _pushPage(
+                      context,
+                      ConsumptionReportPage(
+                          db: db, archiveKeyId: archiveKeyId),
+                    ),
+                    bgColor: Colors.blue[700]!,
+                    width: buttonWidth,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 36),
+              createButton(
+                text: 'رجوع',
+                onPressed: () => Navigator.pop(context),
+                bgColor: Colors.red[700]!,
+                width: buttonWidth,
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -7,71 +7,73 @@ import '../utils/background_scaffold.dart';
 class ViewPage extends StatelessWidget {
   final DatabaseManager db;
   final VoidCallback navigateToMain;
-  final String backgroundImagePath;
+  final String? backgroundImagePath;
 
   const ViewPage({
-    Key? key,
+    super.key,
     required this.db,
     required this.navigateToMain,
-    required this.backgroundImagePath,
-  }) : super(key: key);
-
-  void _handleBack(BuildContext context) {
-    navigateToMain();
-  }
+    this.backgroundImagePath,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
-    final double buttonWidth = isPortrait
-        ? MediaQuery.of(context).size.width * 0.5
-        : MediaQuery.of(context).size.width * 0.25;
-    const double buttonHeight = 60.0;
-
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (bool didPop, dynamic result) {
         if (didPop) return;
-        _handleBack(context);
+        navigateToMain();
       },
       child: BackgroundScaffold(
         title: 'عرض وبحث',
-        backgroundImagePath: backgroundImagePath,
-        child: Stack(
-          children: [
-            Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20.0),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final double buttonWidth = constraints.maxWidth < 600
+                    ? constraints.maxWidth * 0.8
+                    : 280;
+                const double buttonHeight = 52.0;
+                const double spacing = 18.0;
+
+                return Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const Text(
                       'عرض البيانات',
                       style: TextStyle(
-                        fontSize: 25,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
-                        
+                        fontFamily: 'Cairo',
                       ),
                       textDirection: TextDirection.rtl,
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 28),
                     createButton(
                       text: 'عرض المتبقيات',
-                      onPressed: () => context.push('/show_expenses', extra: {'isMiscellaneous': false}), // تمرير المعامل
+                      onPressed: () => context.push(
+                        '/show_expenses',
+                        extra: {'isMiscellaneous': false},
+                      ),
                       bgColor: Colors.green[700]!,
                       width: buttonWidth,
                       height: buttonHeight,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: spacing),
                     createButton(
                       text: 'عرض النثريات',
-                      onPressed: () => context.push('/show_expenses', extra: {'isMiscellaneous': true}), // تمرير المعامل
+                      onPressed: () => context.push(
+                        '/show_expenses',
+                        extra: {'isMiscellaneous': true},
+                      ),
                       bgColor: Colors.green[700]!,
                       width: buttonWidth,
                       height: buttonHeight,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: spacing),
                     createButton(
                       text: 'عرض بيانات المشتركين',
                       onPressed: () => context.push('/show_subscribers'),
@@ -79,26 +81,19 @@ class ViewPage extends StatelessWidget {
                       width: buttonWidth,
                       height: buttonHeight,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: spacing * 2),
                     createButton(
                       text: 'رجوع',
-                      onPressed: () => _handleBack(context),
+                      onPressed: () => navigateToMain(),
                       bgColor: Colors.red[700]!,
                       width: buttonWidth,
                       height: buttonHeight,
                     ),
                   ],
-                ),
-              ),
+                );
+              },
             ),
-            Positioned(
-              top: 20,
-              left: 20,
-              child: createHomeButton(
-                onPressed: () => context.go('/main'),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

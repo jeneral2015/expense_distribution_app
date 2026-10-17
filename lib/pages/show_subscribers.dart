@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../utils/button_utils.dart';
 import '../utils/database.dart';
 import '../utils/background_scaffold.dart';
 import '../utils/logger.dart';
 import '../services/auth_service.dart';
+import '../core/constants/app_ranks.dart';
+import '../core/utils/formatters.dart';
+import '../core/utils/snackbar_utils.dart';
 
 class ShowSubscribersPage extends StatefulWidget {
   final DatabaseManager db;
@@ -86,17 +88,7 @@ class _ShowSubscribersPageState extends State<ShowSubscribersPage> with WidgetsB
       final results = await widget.db.fetchAll('''
         SELECT member_id, rank, name, contribution, total_due 
         FROM members 
-        ORDER BY CASE rank
-          WHEN 'لواء' THEN 0
-          WHEN 'عميد' THEN 1
-          WHEN 'عقيد' THEN 2
-          WHEN 'مقدم' THEN 3
-          WHEN 'رائد' THEN 4
-          WHEN 'نقيب' THEN 5
-          WHEN 'ملازم أول' THEN 6
-          WHEN 'ملازم' THEN 7
-          ELSE 999
-        END
+        ORDER BY ${AppRanks.sqlRankOrder('rank')}
       ''');
 
       setState(() {
@@ -376,9 +368,7 @@ class _ShowSubscribersPageState extends State<ShowSubscribersPage> with WidgetsB
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message, textDirection: TextDirection.rtl)),
-    );
+    showAppSnackBar(context, message);
   }
 
   @override
@@ -398,9 +388,7 @@ class _ShowSubscribersPageState extends State<ShowSubscribersPage> with WidgetsB
       child: BackgroundScaffold(
         title: 'عرض بيانات المشتركين',
         backgroundImagePath: widget.backgroundImagePath,
-        child: Stack(
-          children: [
-            Center(
+        child: Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -467,8 +455,8 @@ class _ShowSubscribersPageState extends State<ShowSubscribersPage> with WidgetsB
                               DataCell(Text((index + 1).toString())),
                               DataCell(Text(row['rank']?.toString() ?? '')),
                               DataCell(Text(row['name']?.toString() ?? '')),
-                              DataCell(Text(row['contribution']?.toStringAsFixed(0) ?? '0')),
-                              DataCell(Text(row['total_due']?.toStringAsFixed(2) ?? '0.00')),
+                              DataCell(Text(Formatters.toAppString(row['contribution'], decimals: 0))),
+                              DataCell(Text(Formatters.toAppString(row['total_due'], decimals: 2))),
                             ],
                           );
                         }).toList(),
@@ -511,15 +499,6 @@ class _ShowSubscribersPageState extends State<ShowSubscribersPage> with WidgetsB
                 ),
               ),
             ),
-            Positioned(
-              top: 20,
-              left: 20,
-              child: createHomeButton(
-                onPressed: () => context.go('/main'),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

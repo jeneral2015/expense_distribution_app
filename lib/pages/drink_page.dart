@@ -3,8 +3,9 @@ import 'package:go_router/go_router.dart';
 import '../utils/button_utils.dart';
 import '../utils/database.dart';
 import '../utils/background_scaffold.dart';
-import 'package:intl/intl.dart';
-import 'dart:ui' as ui;
+import 'package:intl/intl.dart' hide TextDirection;
+import '../core/constants/app_ranks.dart';
+import '../core/utils/snackbar_utils.dart';
 
 class DrinkPage extends StatefulWidget {
   final DatabaseManager db;
@@ -74,9 +75,10 @@ class _DrinkPageState extends State<DrinkPage> {
       try {
         final quantity = int.tryParse(quantityText);
         if (quantity == null || quantity <= 0) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('العدد يجب أن يكون عددًا صحيحًا أكبر من صفر!')),
+          showAppSnackBar(
+            context,
+            'العدد يجب أن يكون عددًا صحيحًا أكبر من صفر!',
+            isError: true,
           );
           return;
         }
@@ -215,37 +217,28 @@ class _DrinkPageState extends State<DrinkPage> {
 
         // عرض رسالة النجاح مع التحذير إذا كان موجود
         if (warningMessage != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('تم توزيع المشروبات بنجاح!',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text(warningMessage!, style: const TextStyle(fontSize: 12)),
-                ],
-              ),
-              duration: const Duration(seconds: 4),
-            ),
+          showAppSnackBar(
+            context,
+            'تم توزيع المشروبات بنجاح!\n$warningMessage',
           );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تم توزيع المشروبات بنجاح!')),
-          );
+          showAppSnackBar(context, 'تم توزيع المشروبات بنجاح!');
         }
 
         _resetFields();
       } catch (e) {
         debugPrint('خطأ أثناء الحفظ: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ أثناء توزيع المشروبات: $e')),
+        showAppSnackBar(
+          context,
+          'حدث خطأ أثناء توزيع المشروبات: $e',
+          isError: true,
         );
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('يرجى ملء جميع الحقول بشكل صحيح.')),
+      showAppSnackBar(
+        context,
+        'يرجى ملء جميع الحقول بشكل صحيح.',
+        isError: true,
       );
     }
   }
@@ -261,9 +254,7 @@ class _DrinkPageState extends State<DrinkPage> {
       child: BackgroundScaffold(
         title: 'توزيع المشروبات',
         backgroundImagePath: widget.backgroundImagePath,
-        child: Stack(
-          children: [
-            Center(
+        child: Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -360,7 +351,7 @@ class _DrinkPageState extends State<DrinkPage> {
                                         color: Colors.white,
                                         
                                       ),
-                                      textDirection: ui.TextDirection.rtl,
+                                      textDirection: TextDirection.rtl,
                                     ),
                                   ))
                               .toList(),
@@ -401,14 +392,14 @@ class _DrinkPageState extends State<DrinkPage> {
                         
                       ),
                       keyboardType: TextInputType.number,
-                      textDirection: ui.TextDirection.rtl,
+                      textDirection: TextDirection.rtl,
                       textAlign: TextAlign.right,
                       textAlignVertical: TextAlignVertical.center,
                     ),
                     const SizedBox(height: 20),
                     FutureBuilder<List<Map<String, dynamic>>>(
                       future: widget.db.fetchAll(
-                          'SELECT member_id, rank, name FROM members ORDER BY CASE rank WHEN \'لواء\' THEN 1 WHEN \'عميد\' THEN 2 WHEN \'عقيد\' THEN 3 WHEN \'مقدم\' THEN 4 WHEN \'رائد\' THEN 5 WHEN \'نقيب\' THEN 6 WHEN \'ملازم أول\' THEN 7 WHEN \'ملازم\' THEN 8 ELSE 9 END'),
+                          'SELECT member_id, rank, name FROM members ORDER BY ${AppRanks.sqlRankOrder('rank')}'),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
@@ -451,7 +442,7 @@ class _DrinkPageState extends State<DrinkPage> {
                               color: Colors.white,
                               
                             ),
-                            textDirection: ui.TextDirection.rtl,
+                            textDirection: TextDirection.rtl,
                           ),
                           items: snapshot.data!.asMap().entries.map((entry) {
                             final index = entry.key;
@@ -465,7 +456,7 @@ class _DrinkPageState extends State<DrinkPage> {
                                   color: Colors.white,
                                   
                                 ),
-                                textDirection: ui.TextDirection.rtl,
+                                textDirection: TextDirection.rtl,
                               ),
                             );
                           }).toList(),
@@ -501,15 +492,6 @@ class _DrinkPageState extends State<DrinkPage> {
                 ),
               ),
             ),
-            Positioned(
-              top: 20,
-              left: 20,
-              child: createHomeButton(
-                onPressed: () => context.go('/main'),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

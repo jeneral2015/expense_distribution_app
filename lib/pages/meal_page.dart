@@ -4,8 +4,8 @@ import '../utils/button_utils.dart';
 import '../utils/database.dart';
 import '../utils/background_scaffold.dart';
 import '../utils/undo_manager.dart';
-import 'package:intl/intl.dart';
-import 'dart:ui' as ui;
+import 'package:intl/intl.dart' hide TextDirection;
+import '../core/constants/app_ranks.dart';
 
 class MealPage extends StatefulWidget {
   final DatabaseManager db;
@@ -356,7 +356,7 @@ class _MealPageState extends State<MealPage> {
             children: [
               for (int i = 0; i < members.length; i++)
                 Directionality(
-                  textDirection: ui.TextDirection.rtl,
+                  textDirection: TextDirection.rtl,
                   child: Container(
                     margin: const EdgeInsets.symmetric(vertical: 4.0),
                     decoration: BoxDecoration(
@@ -766,7 +766,7 @@ class _MealPageState extends State<MealPage> {
 
         FutureBuilder<List<Map<String, dynamic>>>(
           future: widget.db.fetchAll(
-            'SELECT member_id, rank, rank || \' \' || name AS display_name FROM members ORDER BY CASE rank WHEN \'لواء\' THEN 1 WHEN \'عميد\' THEN 2 WHEN \'عقيد\' THEN 3 WHEN \'مقدم\' THEN 4 WHEN \'رائد\' THEN 5 WHEN \'نقيب\' THEN 6 WHEN \'ملازم أول\' THEN 7 WHEN \'ملازم\' THEN 8 ELSE 9 END',
+            'SELECT member_id, rank, rank || \' \' || name AS display_name FROM members ORDER BY ${AppRanks.sqlRankOrder('rank')}',
           ),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -827,38 +827,27 @@ class _MealPageState extends State<MealPage> {
       child: BackgroundScaffold(
         title: 'توزيع الوجبات',
         backgroundImagePath: widget.backgroundImagePath,
-        child: Stack(
-          children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: IntrinsicHeight(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          ..._buildStepContent(context),
-                          const SizedBox(height: 20),
-                        ],
-                      ),
-                    ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
+                ),
+                child: IntrinsicHeight(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      ..._buildStepContent(context),
+                      const SizedBox(height: 20),
+                    ],
                   ),
-                );
-              },
-            ),
-            Positioned(
-              top: 20,
-              left: 20,
-              child: createHomeButton(
-                onPressed: () => context.go('/main'),
+                ),
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

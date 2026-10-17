@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../utils/button_utils.dart';
 import '../utils/database.dart';
 import '../utils/background_scaffold.dart';
 import '../utils/logger.dart';
 import '../services/auth_service.dart';
+import '../core/utils/formatters.dart';
+import '../core/utils/snackbar_utils.dart';
 
 class InputPurchasesPage extends StatefulWidget {
   final DatabaseManager db;
@@ -36,15 +37,8 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
   bool _isMiscellaneous = false; // نثريات (لا تزيد المخزون، تضاف مباشرة للاستهلاك)
   bool _isDrink = false;
 
-  double _asDouble(dynamic v, [double fallback = 0.0]) {
-    if (v == null) return fallback;
-    if (v is num) return v.toDouble();
-    if (v is String) {
-      final p = double.tryParse(v);
-      if (p != null) return p;
-    }
-    return fallback;
-  }
+  double _asDouble(dynamic v, [double fallback = 0.0]) =>
+      Formatters.toDouble(v, fallback);
 
   @override
   void initState() {
@@ -454,9 +448,7 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message, textDirection: TextDirection.rtl)),
-    );
+    showAppSnackBar(context, message);
   }
 
   @override
@@ -476,9 +468,7 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
       child: BackgroundScaffold(
         title: 'إدخال المشتروات',
         backgroundImagePath: widget.backgroundImagePath,
-        child: Stack(
-          children: [
-            Center(
+        child: Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -713,15 +703,6 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                 ),
               ),
             ),
-            Positioned(
-              top: 20,
-              left: 20,
-              child: createHomeButton(
-                onPressed: () => context.go('/main'),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

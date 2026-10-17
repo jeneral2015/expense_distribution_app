@@ -1,26 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:go_router/go_router.dart';
 import '../utils/button_utils.dart';
 import '../utils/database.dart';
 import '../utils/background_scaffold.dart';
 import '../utils/logger.dart';
 import '../services/auth_service.dart';
 
+import '../core/constants/app_ranks.dart';
+import '../core/utils/snackbar_utils.dart';
+
 class InputSubscribersPage extends StatefulWidget {
   final DatabaseManager db;
   final VoidCallback navigateToInput;
-  final String backgroundImagePath;
+  final String? backgroundImagePath;
 
   const InputSubscribersPage({
-    Key? key,
+    super.key,
     required this.db,
     required this.navigateToInput,
-    required this.backgroundImagePath,
-  }) : super(key: key);
+    this.backgroundImagePath,
+  });
 
   @override
-  _InputSubscribersPageState createState() => _InputSubscribersPageState();
+  State<InputSubscribersPage> createState() => _InputSubscribersPageState();
 }
 
 class _InputSubscribersPageState extends State<InputSubscribersPage> {
@@ -29,15 +31,7 @@ class _InputSubscribersPageState extends State<InputSubscribersPage> {
   String? _selectedRank;
   List<String> _similarNames = [];
 
-  final List<String> _ranks = [
-    'عميد',
-    'عقيد',
-    'مقدم',
-    'رائد',
-    'نقيب',
-    'ملازم أول',
-    'ملازم',
-  ];
+  final List<String> _ranks = AppRanks.ranks;
 
   @override
   void initState() {
@@ -147,9 +141,7 @@ class _InputSubscribersPageState extends State<InputSubscribersPage> {
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message, textDirection: TextDirection.rtl)),
-    );
+    showAppSnackBar(context, message);
   }
 
   @override
@@ -169,9 +161,7 @@ class _InputSubscribersPageState extends State<InputSubscribersPage> {
       child: BackgroundScaffold(
         title: 'إدخال بيانات المشتركين',
         backgroundImagePath: widget.backgroundImagePath,
-        child: Stack(
-          children: [
-            Center(
+        child: Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -298,15 +288,6 @@ class _InputSubscribersPageState extends State<InputSubscribersPage> {
                 ),
               ),
             ),
-            Positioned(
-              top: 20,
-              left: 20,
-              child: createHomeButton(
-                onPressed: () => context.go('/main'),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
