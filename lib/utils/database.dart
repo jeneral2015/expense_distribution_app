@@ -778,11 +778,79 @@ class DatabaseManager {
     }
   }
 
+  Future<String> getMonthlyClosureStartDate(DatabaseExecutor db) async {
+    try {
+      final prev = await db.rawQuery(
+        "SELECT MAX(end_date) as max_end_date FROM archive_keys WHERE end_date IS NOT NULL",
+      );
+      final prevEndDateStr = (prev.isNotEmpty && prev.first['max_end_date'] != null)
+          ? prev.first['max_end_date'] as String
+          : null;
+
+      final dates = <String>[];
+      final queries = [
+        "SELECT MIN(date) as min_date FROM meal_records",
+        "SELECT MIN(date) as min_date FROM drink_records",
+        "SELECT MIN(distribution_date) as min_date FROM miscellaneous_contributions",
+      ];
+      for (final q in queries) {
+        final res = await db.rawQuery(q);
+        if (res.isNotEmpty && res.first['min_date'] != null) {
+          final d = res.first['min_date'] as String;
+          if (d.isNotEmpty) dates.add(d);
+        }
+      }
+
+      if (dates.isNotEmpty) {
+        final earliestActive = dates.reduce((a, b) => a.compareTo(b) < 0 ? a : b);
+        if (prevEndDateStr != null && prevEndDateStr.isNotEmpty) {
+          if (earliestActive.compareTo(prevEndDateStr) > 0) {
+            return earliestActive;
+          }
+        } else {
+          return earliestActive;
+        }
+      }
+
+      if (prevEndDateStr != null && prevEndDateStr.isNotEmpty) {
+        try {
+          final prevDt = DateTime.parse(prevEndDateStr);
+          final nextDay = prevDt.add(const Duration(days: 1));
+          return DateFormat('yyyy-MM-dd').format(nextDay);
+        } catch (_) {}
+      }
+
+      final now = DateTime.now();
+      return DateFormat('yyyy-MM-dd').format(DateTime(now.year, now.month, 1));
+    } catch (e) {
+      AppLogger.logError("Error calculating monthly closure start date: $e");
+      final now = DateTime.now();
+      return DateFormat('yyyy-MM-dd').format(DateTime(now.year, now.month, 1));
+    }
+  }
+
+  Future<int?> createMonthlyArchiveKey(DatabaseExecutor db, String closureDate) async {
+    try {
+      final startDate = await getMonthlyClosureStartDate(db);
+      final nowDt = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+      final archiveName = "Month_${startDate}_to_$closureDate";
+
+      final keyId = await db.rawInsert(
+        "INSERT INTO archive_keys (archive_name, start_date, end_date, archived_at) VALUES (?, ?, ?, ?)",
+        [archiveName, startDate, closureDate, nowDt],
+      );
+      AppLogger.logInfo("Created new monthly archive key: $keyId ($startDate to $closureDate)");
+      return keyId;
+    } catch (e) {
+      AppLogger.logError("Error creating monthly archive key: $e");
+      return null;
+    }
+  }
+
   Future<int?> getOrCreateArchiveKey(DatabaseExecutor db, String firstDate) async {
     try {
       final existing = await db.rawQuery(
-        "SELECT archive_key_id FROM archive_keys WHERE start_date <= ? AND (end_date IS NULL OR end_date >= ?)",
-        [firstDate, firstDate],
+        "SELECT archive_key_id FROM archive_keys WHERE end_date IS NULL",
       );
 
       final nowDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
@@ -790,11 +858,6 @@ class DatabaseManager {
 
       if (existing.isNotEmpty) {
         final keyId = existing.first['archive_key_id'] as int;
-        await db.rawUpdate(
-          "UPDATE archive_keys SET end_date = ?, archived_at = ? WHERE archive_key_id = ? AND end_date IS NULL",
-          [nowDate, nowDt, keyId],
-        );
-        AppLogger.logInfo("Updated existing archive key: $keyId");
         return keyId;
       } else {
         final archiveName = "Dist_${firstDate}_to_$nowDate";

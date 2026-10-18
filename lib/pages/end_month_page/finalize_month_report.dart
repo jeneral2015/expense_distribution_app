@@ -143,19 +143,10 @@ class FinalizeMonthReport {
       );
       debugPrint("Navigated to report view");
 
-      if (await FinalizeMonthData.archiveAllData(db, archiveKeyId)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("تم أرشفة جميع البيانات بنجاح")),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("حدث خطأ أثناء أرشفة البيانات")),
-        );
-      }
       if (navigate != null) {
         navigate("end_month_page");
       }
-        } catch (e) {
+    } catch (e) {
       debugPrint("Error showing report: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("خطأ أثناء عرض التقرير: $e")),
