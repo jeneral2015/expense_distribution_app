@@ -27,7 +27,8 @@ class MemberConsumptionReportPage extends StatefulWidget {
 
 class _MemberConsumptionReportPageState
     extends State<MemberConsumptionReportPage> {
-  final TextStyle textStyle = const TextStyle(fontSize: 14, fontFamily: 'Cairo');
+  final TextStyle textStyle =
+      const TextStyle(fontSize: 14, fontFamily: 'Cairo');
 
   List<Map<String, dynamic>> subscribers = [];
   String? selectedSubscriberId;
@@ -206,7 +207,8 @@ class _MemberConsumptionReportPageState
       _calculateTotals();
     } catch (e) {
       if (mounted) {
-        showAppSnackBar(context, 'خطأ أثناء جلب استهلاك المشترك: $e', isError: true);
+        showAppSnackBar(context, 'خطأ أثناء جلب استهلاك المشترك: $e',
+            isError: true);
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -240,7 +242,8 @@ class _MemberConsumptionReportPageState
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title: const Text('تأكيد الحذف'),
-          content: Text('هل أنت متأكد من حذف ${selectedRecordIndices.length} سجل محدد؟'),
+          content: Text(
+              'هل أنت متأكد من حذف ${selectedRecordIndices.length} سجل محدد؟'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -315,7 +318,9 @@ class _MemberConsumptionReportPageState
 
       final extraInfo = <String, String>{
         'اسم المشترك': selectedSubscriberName,
-        'نوع التقرير': isArchived ? 'تقرير استهلاك مشترك (مؤرشف)' : 'تقرير استهلاك مشترك (الشهر الحالي)',
+        'نوع التقرير': isArchived
+            ? 'تقرير استهلاك مشترك (مؤرشف)'
+            : 'تقرير استهلاك مشترك (الشهر الحالي)',
         'تاريخ التصدير': DateTime.now().toString().substring(0, 19),
       };
 
@@ -365,54 +370,93 @@ class _MemberConsumptionReportPageState
                     if (isArchived) ...[
                       Text(
                         'الأرشيف: $archiveName\nالفترة: $startDate إلى $endDate',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 12),
                     ],
 
                     // Subscriber Selection Card
-                    Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                        child: Row(
-                          children: [
-                            const Text(
-                              'اختر المشترك: ',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: DropdownButton<String>(
-                                value: selectedSubscriberId,
-                                hint: const Text('--- اضغط لاختيار مشترك ---'),
-                                isExpanded: true,
-                                items: subscribers.map((sub) {
-                                  final id = sub['member_id'].toString();
-                                  final label = '${sub['rank']} / ${sub['name']}';
-                                  return DropdownMenuItem(
-                                    value: id,
-                                    child: Text(label),
-                                  );
-                                }).toList(),
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    final sub = subscribers.firstWhere(
-                                      (s) => s['member_id'].toString() == val,
-                                    );
-                                    setState(() {
-                                      selectedSubscriberId = val;
-                                      selectedSubscriberName =
+                    Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width < 600
+                              ? double.infinity
+                              : 550.0,
+                        ),
+                        child: Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0, vertical: 12.0),
+                            child: Row(
+                              children: [
+                                const Text(
+                                  'اختر المشترك: ',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: DropdownButton<String>(
+                                    value: selectedSubscriberId,
+                                    alignment: Alignment.centerRight,
+                                    hint: const Text(
+                                      '--- اضغط لاختيار مشترك ---',
+                                      textAlign: TextAlign.right,
+                                      textDirection: TextDirection.rtl,
+                                    ),
+                                    isExpanded: true,
+                                    items: subscribers.map((sub) {
+                                      final id = sub['member_id'].toString();
+                                      final label =
                                           '${sub['rank']} / ${sub['name']}';
-                                    });
-                                    _fetchConsumption(val);
-                                  }
-                                },
-                              ),
+                                      return DropdownMenuItem(
+                                        value: id,
+                                        alignment: Alignment.centerRight,
+                                        child: Text(
+                                          label,
+                                          textAlign: TextAlign.right,
+                                          textDirection: TextDirection.rtl,
+                                        ),
+                                      );
+                                    }).toList(),
+                                    selectedItemBuilder: (context) =>
+                                        subscribers.map((sub) {
+                                      final label =
+                                          '${sub['rank']} / ${sub['name']}';
+                                      return Align(
+                                        alignment: Alignment.centerRight,
+                                        child: Text(
+                                          label,
+                                          textAlign: TextAlign.right,
+                                          textDirection: TextDirection.rtl,
+                                        ),
+                                      );
+                                    }).toList(),
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        final sub = subscribers.firstWhere(
+                                          (s) =>
+                                              s['member_id'].toString() == val,
+                                        );
+                                        setState(() {
+                                          selectedSubscriberId = val;
+                                          selectedSubscriberName =
+                                              '${sub['rank']} / ${sub['name']}';
+                                        });
+                                        _fetchConsumption(val);
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -421,7 +465,8 @@ class _MemberConsumptionReportPageState
                     if (selectedSubscriberId != null) ...[
                       // Search box
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4.0, vertical: 4.0),
                         child: TextField(
                           controller: searchController,
                           decoration: InputDecoration(
@@ -445,7 +490,8 @@ class _MemberConsumptionReportPageState
 
                       // Information banner about meal clicking
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.orange.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(10),
@@ -453,12 +499,14 @@ class _MemberConsumptionReportPageState
                         ),
                         child: const Row(
                           children: [
-                            Icon(Icons.touch_app, color: Colors.orange, size: 20),
+                            Icon(Icons.touch_app,
+                                color: Colors.orange, size: 20),
                             SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 '💡 اضغط على أي وجبة في الجدول لعرض مكوناتها والتكلفة المسجلة على هذا المشترك.',
-                                style: TextStyle(fontSize: 13, color: Colors.deepOrange),
+                                style: TextStyle(
+                                    fontSize: 13, color: Colors.deepOrange),
                               ),
                             ),
                           ],
@@ -472,7 +520,8 @@ class _MemberConsumptionReportPageState
                           padding: EdgeInsets.all(32.0),
                           child: Text(
                             'لا توجد سجلات استهلاك لهذا المشترك!',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                         )
                       else
@@ -481,7 +530,8 @@ class _MemberConsumptionReportPageState
                           child: DataTable(
                             columnSpacing: 24,
                             showCheckboxColumn: false,
-                            headingRowColor: WidgetStateProperty.all(const Color(0xFF1E4C54)),
+                            headingRowColor: WidgetStateProperty.all(
+                                const Color(0xFF1E4C54)),
                             headingTextStyle: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -489,16 +539,45 @@ class _MemberConsumptionReportPageState
                             ),
                             columns: [
                               if (!isArchived)
-                                const DataColumn(label: Text('تحديد')),
+                              DataColumn(
+                                label: Tooltip(
+                                  message: 'تحديد الكل',
+                                  child: Checkbox(
+                                    value: filteredConsumption.isNotEmpty &&
+                                        selectedRecordIndices.length ==
+                                            filteredConsumption.length,
+                                    activeColor: Colors.green,
+                                    checkColor: Colors.white,
+                                    side: const BorderSide(
+                                        color: Colors.white, width: 2),
+                                    onChanged: (bool? val) {
+                                      setState(() {
+                                        if (val == true) {
+                                          selectedRecordIndices = Set.from(
+                                              List.generate(
+                                                  filteredConsumption.length,
+                                                  (i) => i));
+                                        } else {
+                                          selectedRecordIndices.clear();
+                                        }
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ),
                               const DataColumn(label: Text('البند / الوجبة')),
                               const DataColumn(label: Text('التكلفة')),
                               const DataColumn(label: Text('التاريخ')),
                               const DataColumn(label: Text('التفاصيل')),
                             ],
-                            rows: filteredConsumption.asMap().entries.map((entry) {
+                            rows: filteredConsumption
+                                .asMap()
+                                .entries
+                                .map((entry) {
                               final idx = entry.key;
                               final row = entry.value;
-                              final isSelected = selectedRecordIndices.contains(idx);
+                              final isSelected =
+                                  selectedRecordIndices.contains(idx);
                               final isMeal = row['record_type'] == 'meal';
                               final cost = Formatters.toDouble(row['cost']);
 
@@ -509,6 +588,8 @@ class _MemberConsumptionReportPageState
                                     DataCell(
                                       Checkbox(
                                         value: isSelected,
+                                        activeColor: Colors.green,
+                                        checkColor: Colors.white,
                                         onChanged: (sel) {
                                           setState(() {
                                             if (sel == true) {
@@ -538,35 +619,51 @@ class _MemberConsumptionReportPageState
                                             style: textStyle),
                                       ],
                                     ),
-                                    onTap: isMeal ? () => _showMealDetails(row) : null,
+                                    onTap: isMeal
+                                        ? () => _showMealDetails(row)
+                                        : null,
                                   ),
                                   DataCell(
-                                    Text('${cost.toAppString()} ج', style: textStyle),
-                                    onTap: isMeal ? () => _showMealDetails(row) : null,
+                                    Text('${cost.toAppString()} ج',
+                                        style: textStyle),
+                                    onTap: isMeal
+                                        ? () => _showMealDetails(row)
+                                        : null,
                                   ),
                                   DataCell(
-                                    Text(row['date']?.toString() ?? '', style: textStyle),
-                                    onTap: isMeal ? () => _showMealDetails(row) : null,
+                                    Text(row['date']?.toString() ?? '',
+                                        style: textStyle),
+                                    onTap: isMeal
+                                        ? () => _showMealDetails(row)
+                                        : null,
                                   ),
                                   DataCell(
                                     isMeal
                                         ? ElevatedButton.icon(
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.orange.shade50,
-                                              foregroundColor: Colors.orange.shade900,
-                                              padding: const EdgeInsets.symmetric(
-                                                  horizontal: 8, vertical: 2),
+                                              backgroundColor:
+                                                  Colors.orange.shade50,
+                                              foregroundColor:
+                                                  Colors.orange.shade900,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 2),
                                               elevation: 0,
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(8),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
                                                 side: BorderSide(
-                                                    color: Colors.orange.shade300),
+                                                    color:
+                                                        Colors.orange.shade300),
                                               ),
                                             ),
-                                            icon: const Icon(Icons.receipt_long, size: 14),
+                                            icon: const Icon(Icons.receipt_long,
+                                                size: 14),
                                             label: const Text('المكونات',
                                                 style: TextStyle(fontSize: 11)),
-                                            onPressed: () => _showMealDetails(row),
+                                            onPressed: () =>
+                                                _showMealDetails(row),
                                           )
                                         : const SizedBox.shrink(),
                                   ),
@@ -584,9 +681,11 @@ class _MemberConsumptionReportPageState
                         alignment: WrapAlignment.center,
                         children: [
                           _buildSummaryBox('الوجبات', mealsCost, Colors.orange),
-                          _buildSummaryBox('المشروبات', drinksCost, Colors.brown),
+                          _buildSummaryBox(
+                              'المشروبات', drinksCost, Colors.brown),
                           _buildSummaryBox('النثريات', miscCost, Colors.teal),
-                          _buildSummaryBox('إجمالي الاستهلاك', totalCost, Colors.green),
+                          _buildSummaryBox(
+                              'إجمالي الاستهلاك', totalCost, Colors.green),
                         ],
                       ),
                       const SizedBox(height: 20),
@@ -598,7 +697,8 @@ class _MemberConsumptionReportPageState
                         Padding(
                           padding: const EdgeInsets.only(bottom: 16.0),
                           child: createButton(
-                            text: 'حذف السجلات المحددة (${selectedRecordIndices.length})',
+                            text:
+                                'حذف السجلات المحددة (${selectedRecordIndices.length})',
                             onPressed: _deleteSelectedRecords,
                             bgColor: Colors.red[800]!,
                             icon: Icons.delete,

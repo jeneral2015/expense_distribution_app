@@ -24,7 +24,8 @@ class MealsReportPage extends StatefulWidget {
 }
 
 class _MealsReportPageState extends State<MealsReportPage> {
-  final TextStyle textStyle = const TextStyle(fontSize: 14, fontFamily: 'Cairo');
+  final TextStyle textStyle =
+      const TextStyle(fontSize: 14, fontFamily: 'Cairo');
 
   List<Map<String, dynamic>> meals = [];
   List<Map<String, dynamic>> filteredMeals = [];
@@ -71,7 +72,7 @@ class _MealsReportPageState extends State<MealsReportPage> {
         }
 
         const query = '''
-          SELECT mr.meal_record_id, m.name, mr.meal_type, mr.date, mr.final_cost, mr.meal_id
+          SELECT mr.meal_record_id, m.name, m.rank, mr.meal_type, mr.date, mr.final_cost, mr.meal_id
           FROM meal_records_archive mr
           JOIN members_archive m ON mr.member_id = m.member_id
           WHERE mr.archive_key_id = ?
@@ -80,7 +81,7 @@ class _MealsReportPageState extends State<MealsReportPage> {
         meals = await widget.db.fetchAll(query, [widget.archiveKeyId]);
       } else {
         const query = '''
-          SELECT mr.meal_record_id, m.name, mr.meal_type, mr.date, mr.final_cost, mr.meal_id
+          SELECT mr.meal_record_id, m.name, m.rank, mr.meal_type, mr.date, mr.final_cost, mr.meal_id
           FROM meal_records mr
           JOIN members m ON mr.member_id = m.member_id
           ORDER BY mr.date DESC, mr.meal_record_id DESC
@@ -89,7 +90,7 @@ class _MealsReportPageState extends State<MealsReportPage> {
       }
 
       final distinctMembers = meals
-          .map((m) => m['name']?.toString() ?? '')
+          .map((m) => _formatMember(m['rank'], m['name']))
           .where((name) => name.isNotEmpty)
           .toSet()
           .toList()
@@ -99,22 +100,35 @@ class _MealsReportPageState extends State<MealsReportPage> {
       _applyFilters();
     } catch (e) {
       if (mounted) {
-        showAppSnackBar(context, 'خطأ أثناء جلب تقرير الوجبات: $e', isError: true);
+        showAppSnackBar(context, 'خطأ أثناء جلب تقرير الوجبات: $e',
+            isError: true);
       }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
+  String _formatMember(dynamic rank, dynamic name) {
+    final r = rank?.toString().trim() ?? '';
+    final n = name?.toString().trim() ?? '';
+    if (r.isNotEmpty && n.isNotEmpty) {
+      return '$r / $n';
+    }
+    return n.isNotEmpty ? n : (r.isNotEmpty ? r : 'غير معروف');
+  }
+
   void _applyFilters() {
     List<Map<String, dynamic>> result = meals;
 
     if (_selectedMealType != 'الكل') {
-      result = result.where((m) => m['meal_type'] == _selectedMealType).toList();
+      result =
+          result.where((m) => m['meal_type'] == _selectedMealType).toList();
     }
 
     if (_selectedMember != null && _selectedMember != 'الكل') {
-      result = result.where((m) => m['name'] == _selectedMember).toList();
+      result = result
+          .where((m) => _formatMember(m['rank'], m['name']) == _selectedMember)
+          .toList();
     }
 
     if (_filterStartDate != null) {
@@ -155,7 +169,7 @@ class _MealsReportPageState extends State<MealsReportPage> {
       db: widget.db,
       mealId: row['meal_id'] as int?,
       mealRecordId: row['meal_record_id'] as int?,
-      memberName: row['name']?.toString() ?? 'غير معروف',
+      memberName: _formatMember(row['rank'], row['name']),
       mealType: row['meal_type']?.toString() ?? 'وجبة',
       date: row['date']?.toString() ?? '',
       memberFinalCost: Formatters.toDouble(row['final_cost']),
@@ -174,7 +188,8 @@ class _MealsReportPageState extends State<MealsReportPage> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title: const Text('تأكيد الحذف'),
-          content: Text('هل أنت متأكد من حذف ${selectedMealIds.length} وجبة محددة؟'),
+          content:
+              Text('هل أنت متأكد من حذف ${selectedMealIds.length} وجبة محددة؟'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -230,7 +245,7 @@ class _MealsReportPageState extends State<MealsReportPage> {
       final columns = ['اسم المشترك', 'نوع الوجبة', 'التاريخ', 'التكلفة'];
       final rows = filteredMeals
           .map((row) => [
-                row['name']?.toString() ?? '',
+                _formatMember(row['rank'], row['name']),
                 row['meal_type']?.toString() ?? '',
                 row['date']?.toString() ?? '',
                 Formatters.toDouble(row['final_cost']),
@@ -238,7 +253,9 @@ class _MealsReportPageState extends State<MealsReportPage> {
           .toList();
 
       final extraInfo = <String, String>{
-        'نوع التقرير': isArchived ? 'تقرير الوجبات (مؤرشف)' : 'تقرير الوجبات (الشهر الحالي)',
+        'نوع التقرير': isArchived
+            ? 'تقرير الوجبات (مؤرشف)'
+            : 'تقرير الوجبات (الشهر الحالي)',
         'تاريخ التصدير': DateTime.now().toString().substring(0, 19),
         'عدد السجلات': '${filteredMeals.length}',
       };
@@ -286,7 +303,8 @@ class _MealsReportPageState extends State<MealsReportPage> {
                     if (isArchived) ...[
                       Text(
                         'الأرشيف: $archiveName\nالفترة: $startDate إلى $endDate',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 12),
@@ -294,7 +312,8 @@ class _MealsReportPageState extends State<MealsReportPage> {
 
                     // Info banner
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
                       margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
                         color: Colors.blue.withValues(alpha: 0.1),
@@ -303,12 +322,14 @@ class _MealsReportPageState extends State<MealsReportPage> {
                       ),
                       child: const Row(
                         children: [
-                          Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                          Icon(Icons.info_outline,
+                              color: Colors.blue, size: 20),
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               '💡 اضغط على أي وجبة في الجدول لعرض مكوناتها والتكلفة المحسوبة لهذا المشترك بالتفصيل.',
-                              style: TextStyle(fontSize: 13, color: Colors.blue),
+                              style:
+                                  TextStyle(fontSize: 13, color: Colors.blue),
                             ),
                           ),
                         ],
@@ -318,7 +339,8 @@ class _MealsReportPageState extends State<MealsReportPage> {
                     // Filter Card
                     Card(
                       elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
                       child: Padding(
                         padding: const EdgeInsets.all(12.0),
                         child: Wrap(
@@ -330,12 +352,36 @@ class _MealsReportPageState extends State<MealsReportPage> {
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text('النوع: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                                const Text('النوع: ',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold)),
                                 DropdownButton<String>(
                                   value: _selectedMealType,
-                                  items: ['الكل', 'فطار', 'غداء', 'عشاء'].map((t) {
-                                    return DropdownMenuItem(value: t, child: Text(t));
+                                  alignment: Alignment.centerRight,
+                                  items:
+                                      ['الكل', 'فطار', 'غداء', 'عشاء'].map((t) {
+                                    return DropdownMenuItem(
+                                      value: t,
+                                      alignment: Alignment.centerRight,
+                                      child: Text(t,
+                                          textAlign: TextAlign.right,
+                                          textDirection: TextDirection.rtl),
+                                    );
                                   }).toList(),
+                                  selectedItemBuilder: (context) => [
+                                    'الكل',
+                                    'فطار',
+                                    'غداء',
+                                    'عشاء'
+                                  ]
+                                      .map((t) => Align(
+                                            alignment: Alignment.centerRight,
+                                            child: Text(t,
+                                                textAlign: TextAlign.right,
+                                                textDirection:
+                                                    TextDirection.rtl),
+                                          ))
+                                      .toList(),
                                   onChanged: (val) {
                                     setState(() {
                                       _selectedMealType = val ?? 'الكل';
@@ -350,12 +396,32 @@ class _MealsReportPageState extends State<MealsReportPage> {
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text('المشترك: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                                const Text('المشترك: ',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold)),
                                 DropdownButton<String>(
                                   value: _selectedMember ?? 'الكل',
+                                  alignment: Alignment.centerRight,
                                   items: _memberOptions.map((m) {
-                                    return DropdownMenuItem(value: m, child: Text(m));
+                                    return DropdownMenuItem(
+                                      value: m,
+                                      alignment: Alignment.centerRight,
+                                      child: Text(m,
+                                          textAlign: TextAlign.right,
+                                          textDirection: TextDirection.rtl),
+                                    );
                                   }).toList(),
+                                  selectedItemBuilder: (context) =>
+                                      _memberOptions
+                                          .map((m) => Align(
+                                                alignment:
+                                                    Alignment.centerRight,
+                                                child: Text(m,
+                                                    textAlign: TextAlign.right,
+                                                    textDirection:
+                                                        TextDirection.rtl),
+                                              ))
+                                          .toList(),
                                   onChanged: (val) {
                                     setState(() {
                                       _selectedMember = val;
@@ -371,11 +437,14 @@ class _MealsReportPageState extends State<MealsReportPage> {
                               icon: const Icon(Icons.date_range, size: 18),
                               label: Text(_filterStartDate == null
                                   ? 'من تاريخ'
-                                  : _filterStartDate.toString().substring(0, 10)),
+                                  : _filterStartDate
+                                      .toString()
+                                      .substring(0, 10)),
                               onPressed: () async {
                                 final d = await showDatePicker(
                                   context: context,
-                                  initialDate: _filterStartDate ?? DateTime.now(),
+                                  initialDate:
+                                      _filterStartDate ?? DateTime.now(),
                                   firstDate: DateTime(2020),
                                   lastDate: DateTime(2035),
                                 );
@@ -407,9 +476,11 @@ class _MealsReportPageState extends State<MealsReportPage> {
                                 }
                               },
                             ),
-                            if (_filterStartDate != null || _filterEndDate != null)
+                            if (_filterStartDate != null ||
+                                _filterEndDate != null)
                               IconButton(
-                                icon: const Icon(Icons.clear, color: Colors.red),
+                                icon:
+                                    const Icon(Icons.clear, color: Colors.red),
                                 tooltip: 'إلغاء فلترة التاريخ',
                                 onPressed: () {
                                   setState(() {
@@ -431,7 +502,8 @@ class _MealsReportPageState extends State<MealsReportPage> {
                         padding: EdgeInsets.all(32.0),
                         child: Text(
                           'لا توجد وجبات تطابق الفلاتر المحددة!',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       )
                     else
@@ -446,14 +518,16 @@ class _MealsReportPageState extends State<MealsReportPage> {
                                   setState(() {
                                     if (isAllSelected == true) {
                                       selectedMealIds = filteredMeals
-                                          .map((m) => m['meal_record_id'] as int)
+                                          .map(
+                                              (m) => m['meal_record_id'] as int)
                                           .toSet();
                                     } else {
                                       selectedMealIds.clear();
                                     }
                                   });
                                 },
-                          headingRowColor: WidgetStateProperty.all(const Color(0xFF1E4C54)),
+                          headingRowColor:
+                              WidgetStateProperty.all(const Color(0xFF1E4C54)),
                           headingTextStyle: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -486,19 +560,25 @@ class _MealsReportPageState extends State<MealsReportPage> {
                                     },
                               cells: [
                                 DataCell(
-                                  Text(row['name']?.toString() ?? '', style: textStyle),
+                                  Text(
+                                    _formatMember(row['rank'], row['name']),
+                                    style: textStyle,
+                                  ),
                                   onTap: () => _showMealDetails(row),
                                 ),
                                 DataCell(
-                                  Text(row['meal_type']?.toString() ?? '', style: textStyle),
+                                  Text(row['meal_type']?.toString() ?? '',
+                                      style: textStyle),
                                   onTap: () => _showMealDetails(row),
                                 ),
                                 DataCell(
-                                  Text(row['date']?.toString() ?? '', style: textStyle),
+                                  Text(row['date']?.toString() ?? '',
+                                      style: textStyle),
                                   onTap: () => _showMealDetails(row),
                                 ),
                                 DataCell(
-                                  Text('${cost.toAppString()} ج', style: textStyle),
+                                  Text('${cost.toAppString()} ج',
+                                      style: textStyle),
                                   onTap: () => _showMealDetails(row),
                                 ),
                                 DataCell(
@@ -511,11 +591,14 @@ class _MealsReportPageState extends State<MealsReportPage> {
                                       elevation: 0,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(8),
-                                        side: BorderSide(color: Colors.orange.shade300),
+                                        side: BorderSide(
+                                            color: Colors.orange.shade300),
                                       ),
                                     ),
-                                    icon: const Icon(Icons.receipt_long, size: 16),
-                                    label: const Text('المكونات', style: TextStyle(fontSize: 12)),
+                                    icon: const Icon(Icons.receipt_long,
+                                        size: 16),
+                                    label: const Text('المكونات',
+                                        style: TextStyle(fontSize: 12)),
                                     onPressed: () => _showMealDetails(row),
                                   ),
                                 ),
@@ -546,11 +629,14 @@ class _MealsReportPageState extends State<MealsReportPage> {
                     const SizedBox(height: 24),
 
                     // Actions
-                    if (!isArchived && selectedMealIds.isNotEmpty && AuthService.instance.canDelete)
+                    if (!isArchived &&
+                        selectedMealIds.isNotEmpty &&
+                        AuthService.instance.canDelete)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 16.0),
                         child: createButton(
-                          text: 'حذف الوجبات المحددة (${selectedMealIds.length})',
+                          text:
+                              'حذف الوجبات المحددة (${selectedMealIds.length})',
                           onPressed: _deleteSelectedMeals,
                           bgColor: Colors.red[800]!,
                           icon: Icons.delete,

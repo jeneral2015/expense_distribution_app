@@ -26,57 +26,9 @@ class FinalizeMonthData {
           throw Exception("لا توجد أعضاء في جدول الأعضاء لتقفيل الشهر.");
         }
 
-        // 2. توزيع النثريات المتبقية إن وجدت
-        final miscExpenses = await txn.rawQuery(
-          "SELECT expense_id, total_price FROM expenses WHERE is_miscellaneous = 1",
-        );
-        if (miscExpenses.isNotEmpty) {
-          final totalMiscValue = miscExpenses.fold<double>(
-            0,
-            (sum, item) => sum + (item['total_price'] as num).toDouble(),
-          );
-          final mealCounts = await txn.rawQuery(
-            "SELECT member_id, COUNT(*) as meal_count FROM meal_records GROUP BY member_id",
-          );
-          final distributionDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
-
-          if (mealCounts.isEmpty) {
-            final members = await txn.rawQuery("SELECT member_id FROM members");
-            if (members.isNotEmpty) {
-              final miscPerMember = totalMiscValue / members.length;
-              for (final m in members) {
-                final memberId = m['member_id'] as int;
-                await txn.rawUpdate(
-                  "UPDATE members SET total_due = total_due + ? WHERE member_id = ?",
-                  [miscPerMember, memberId],
-                );
-                await txn.rawInsert(
-                  "INSERT INTO miscellaneous_contributions (member_id, misc_amount, meal_count, distribution_date) VALUES (?, ?, ?, ?)",
-                  [memberId, miscPerMember, 0, distributionDate],
-                );
-              }
-            }
-          } else {
-            final totalMeals = mealCounts.fold<int>(
-              0,
-              (sum, item) => sum + (item['meal_count'] as int),
-            );
-            final miscCostPerMeal = totalMeals > 0 ? (totalMiscValue / totalMeals) : 0.0;
-            for (final record in mealCounts) {
-              final memberId = record['member_id'] as int;
-              final mealCount = record['meal_count'] as int;
-              final amount = mealCount * miscCostPerMeal;
-              await txn.rawUpdate(
-                "UPDATE members SET total_due = total_due + ? WHERE member_id = ?",
-                [amount, memberId],
-              );
-              await txn.rawInsert(
-                "INSERT INTO miscellaneous_contributions (member_id, misc_amount, meal_count, distribution_date) VALUES (?, ?, ?, ?)",
-                [memberId, amount, mealCount, distributionDate],
-              );
-            }
-          }
-        }
+        // 2. توزيع النثريات المتبقية إن وجدت بالطريقة الموحدة العادلة
+        final distribution = MiscellaneousDistribution(context, db);
+        await distribution.distributeMiscellaneous(txn, suppressSnackbars: true);
 
         // 3. إنشاء مفتاح أرشيف شهري جديد لهذا الشهر
         final closureDate = DateFormat('yyyy-MM-dd').format(DateTime.now());

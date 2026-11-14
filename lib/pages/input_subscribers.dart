@@ -161,55 +161,70 @@ class _InputSubscribersPageState extends State<InputSubscribersPage> {
       child: BackgroundScaffold(
         title: 'إدخال بيانات المشتركين',
         backgroundImagePath: widget.backgroundImagePath,
-        child: Center(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final double formWidth = constraints.maxWidth < 600
+                ? constraints.maxWidth * 0.88
+                : 450.0;
+            return Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    DropdownButtonFormField<String>(
-                      decoration: InputDecoration(
-                        labelText: 'الرتبة',
-                        labelStyle: const TextStyle(color: Colors.white, ),
-                        filled: true,
-                        fillColor: Colors.black.withOpacity(0.7),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      value: _selectedRank,
-                      hint: const Text(
-                        'الرتبة',
-                        textDirection: TextDirection.rtl,
-                        style: TextStyle(color: Colors.white, ),
-                      ),
-                      items: _ranks.map((rank) {
-                        return DropdownMenuItem(
-                          value: rank,
-                          child: Text(
-                            rank,
-                            textDirection: TextDirection.rtl,
-                            style: const TextStyle(color: Colors.white, ),
+                child: SizedBox(
+                  width: formWidth,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      DropdownButtonFormField<String>(
+                        alignment: Alignment.centerRight,
+                        decoration: InputDecoration(
+                          labelText: 'الرتبة',
+                          labelStyle: const TextStyle(color: Colors.white),
+                          filled: true,
+                          fillColor: Colors.black.withOpacity(0.7),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedRank = value;
-                        });
-                      },
-                      style: const TextStyle(color: Colors.white, ),
-                      dropdownColor: Colors.black.withOpacity(0.7),
-                      selectedItemBuilder: (BuildContext context) {
-                        return _ranks.map((String rank) {
-                          return Text(
-                            rank,
-                            style: const TextStyle(color: Colors.white, ),
-                            textDirection: TextDirection.rtl,
+                        ),
+                        value: _selectedRank,
+                        hint: const Text(
+                          'الرتبة',
+                          textDirection: TextDirection.rtl,
+                          textAlign: TextAlign.right,
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        items: _ranks.map((rank) {
+                          return DropdownMenuItem(
+                            value: rank,
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              rank,
+                              textDirection: TextDirection.rtl,
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(color: Colors.white),
+                            ),
                           );
-                        }).toList();
-                      },
-                    ),
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedRank = value;
+                          });
+                        },
+                        style: const TextStyle(color: Colors.white),
+                        dropdownColor: Colors.black.withOpacity(0.7),
+                        selectedItemBuilder: (BuildContext context) {
+                          return _ranks.map((String rank) {
+                            return Align(
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                rank,
+                                style: const TextStyle(color: Colors.white),
+                                textDirection: TextDirection.rtl,
+                                textAlign: TextAlign.right,
+                              ),
+                            );
+                          }).toList();
+                        },
+                      ),
                     const SizedBox(height: 20),
                     TextField(
                       controller: _nameController,
@@ -288,6 +303,9 @@ class _InputSubscribersPageState extends State<InputSubscribersPage> {
                 ),
               ),
             ),
+          );
+        },
+      ),
       ),
     );
   }

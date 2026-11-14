@@ -110,8 +110,8 @@ class DistributeMiscellaneous {
 
         await txn.rawInsert(
           "INSERT OR REPLACE INTO expenses_archive "
-          "(expense_id, item_name, quantity, price, total_price, consumption, remaining, is_miscellaneous, is_drink, date, archive_key_id) "
-          "SELECT expense_id, item_name, quantity, price, total_price, consumption, remaining, is_miscellaneous, is_drink, date, ? "
+          "(expense_id, item_name, unit, quantity, price, total_price, consumption, remaining, is_miscellaneous, is_drink, date, archive_key_id) "
+          "SELECT expense_id, item_name, unit, quantity, price, total_price, consumption, remaining, is_miscellaneous, is_drink, date, ? "
           "FROM expenses WHERE expense_id IN ($placeholders2)",
           [archiveKeyId, ...expenseIds],
         );

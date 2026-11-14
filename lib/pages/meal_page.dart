@@ -29,7 +29,9 @@ class _MealPageState extends State<MealPage> {
   late Map<String, bool> _selectedMeals;
   late Map<String, TextEditingController> _mealQuantities;
   late bool _miscVar;
-  late Map<String, int> _memberMeals; // Changed from Map<String, bool> to Map<String, int>
+  late Map<String, int>
+      _memberMeals; // Changed from Map<String, bool> to Map<String, int>
+  late Map<String, String> _itemUnits;
   int _currentStep = 0;
 
   @override
@@ -43,12 +45,14 @@ class _MealPageState extends State<MealPage> {
     _mealQuantities = {};
     _miscVar = false;
     _memberMeals = {};
+    _itemUnits = {};
   }
 
   @override
   void dispose() {
     _dateController.dispose();
     _mealQuantities.forEach((_, controller) => controller.dispose());
+    _itemUnits.clear();
     super.dispose();
   }
 
@@ -62,9 +66,8 @@ class _MealPageState extends State<MealPage> {
 
   Future<void> _saveMealData() async {
     try {
-      final selectedMembersWithMeals = _memberMeals.entries
-          .where((e) => e.value > 0)
-          .toList();
+      final selectedMembersWithMeals =
+          _memberMeals.entries.where((e) => e.value > 0).toList();
 
       if (selectedMembersWithMeals.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -114,7 +117,8 @@ class _MealPageState extends State<MealPage> {
       }
 
       // Calculate total meals across all members
-      final int totalMeals = _memberMeals.values.fold(0, (sum, meals) => sum + meals);
+      final int totalMeals =
+          _memberMeals.values.fold(0, (sum, meals) => sum + meals);
       final double costPerMeal = totalCost / totalMeals;
       final double miscPerMeal = miscTotal / totalMeals;
 
@@ -193,7 +197,8 @@ class _MealPageState extends State<MealPage> {
           'date': _dateController.text,
           'total_cost': totalCost,
           'misc_total': miscTotal,
-          'selected_members': selectedMembersWithMeals.map((e) => e.key).toList(),
+          'selected_members':
+              selectedMembersWithMeals.map((e) => e.key).toList(),
           'member_meals': Map<String, int>.from(_memberMeals),
           'meal_items': mealItemsData,
         },
@@ -213,6 +218,7 @@ class _MealPageState extends State<MealPage> {
         _mealQuantities.clear();
         _miscVar = false;
         _memberMeals.clear();
+        _itemUnits.clear();
       });
     } catch (e) {
       debugPrint('خطأ أثناء حفظ المأكولات: $e');
@@ -234,9 +240,8 @@ class _MealPageState extends State<MealPage> {
     final mediaQuery = MediaQuery.of(context);
     final bool isPortrait = mediaQuery.orientation == Orientation.portrait;
     final double screenWidth = mediaQuery.size.width;
-    final double buttonWidth = isPortrait
-        ? screenWidth * 0.4
-        : screenWidth * 0.25;
+    final double buttonWidth =
+        isPortrait ? screenWidth * 0.4 : screenWidth * 0.25;
     final double buttonHeight = mediaQuery.size.height * heightRatio;
 
     return Container(
@@ -286,57 +291,137 @@ class _MealPageState extends State<MealPage> {
     );
   }
 
+  String _formatRemaining(dynamic remaining) {
+    if (remaining == null) return '0';
+    final double val = (remaining is num)
+        ? remaining.toDouble()
+        : (double.tryParse(remaining.toString()) ?? 0.0);
+    if (val == val.roundToDouble()) {
+      return val.toInt().toString();
+    }
+    return val.toStringAsFixed(2).replaceAll(RegExp(r'\.?0+$'), '');
+  }
+
   Widget _buildItemsList(List<Map<String, dynamic>> items) {
+    for (var row in items) {
+      final name = row['item_name'] as String?;
+      final unit = row['unit'] as String?;
+      if (name != null && unit != null && unit.trim().isNotEmpty) {
+        _itemUnits[name] = unit.trim();
+      }
+    }
     return StatefulBuilder(
       builder: (context, setState) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.7),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            children: [
-              ...items.map((row) {
-                return CheckboxListTile(
-                  title: Text(
-                    row['item_name'],
-                    style: const TextStyle(
-                      color: Colors.white,
-                      
+        final double listWidth = MediaQuery.of(context).size.width < 600
+            ? MediaQuery.of(context).size.width * 0.90
+            : 550.0;
+        return Center(
+          child: SizedBox(
+            width: listWidth,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                children: [
+                  ...items.map((row) {
+                    final String itemName = row['item_name'] as String;
+                    final String unit = (row['unit'] as String?)?.trim() ?? '';
+                    final String remainingStr =
+                        _formatRemaining(row['remaining']);
+                    final bool isSelected = _selectedMeals[itemName] ?? false;
+                    return Container(
+                      margin: const EdgeInsets.symmetric(vertical: 2.0),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Colors.white.withOpacity(0.1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: CheckboxListTile(
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                itemName,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.white24),
+                              ),
+                              child: Text(
+                                'المتبقي: $remainingStr${unit.isNotEmpty ? " $unit" : ""}',
+                                style: const TextStyle(
+                                  color: Color(0xFFFFD54F),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        value: isSelected,
+                        onChanged: (bool? value) {
+                          setState(() {
+                            _selectedMeals[itemName] = value ?? false;
+                          });
+                        },
+                        controlAffinity: ListTileControlAffinity.leading,
+                        activeColor: Colors.green,
+                        checkColor: Colors.white,
+                        side: const BorderSide(color: Colors.white, width: 2),
+                        tileColor: Colors.transparent,
+                      ),
+                    );
+                  }).toList(),
+                  // مصاريف أخرى
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 2.0),
+                    decoration: BoxDecoration(
+                      color: _miscVar
+                          ? Colors.white.withOpacity(0.1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: CheckboxListTile(
+                      title: const Text(
+                        'مصاريف أخرى',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      value: _miscVar,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          _miscVar = value ?? false;
+                        });
+                      },
+                      controlAffinity: ListTileControlAffinity.leading,
+                      activeColor: Colors.green,
+                      checkColor: Colors.white,
+                      side: const BorderSide(color: Colors.white, width: 2),
+                      tileColor: Colors.transparent,
                     ),
                   ),
-                  value: _selectedMeals[row['item_name']] ?? false,
-                  onChanged: (bool? value) {
-                    setState(() {
-                      _selectedMeals[row['item_name']] = value ?? false;
-                    });
-                  },
-                  activeColor: Colors.green,
-                  checkColor: Colors.white,
-                  tileColor: Colors.transparent,
-                );
-              }).toList(),
-              // مصاريف أخرى
-              CheckboxListTile(
-                title: const Text(
-                  'مصاريف أخرى',
-                  style: TextStyle(
-                    color: Colors.white,
-                    
-                  ),
-                ),
-                value: _miscVar,
-                onChanged: (bool? value) {
-                  setState(() {
-                    _miscVar = value ?? false;
-                  });
-                },
-                activeColor: Colors.green,
-                checkColor: Colors.white,
-                tileColor: Colors.transparent,
+                ],
               ),
-            ],
+            ),
           ),
         );
       },
@@ -366,19 +451,24 @@ class _MealPageState extends State<MealPage> {
                     child: Row(
                       children: [
                         Checkbox(
-                          value: (_memberMeals[members[i]['display_name']] ?? 0) > 0, // Fixed: Convert int to bool
+                          value:
+                              (_memberMeals[members[i]['display_name']] ?? 0) >
+                                  0, // Fixed: Convert int to bool
                           onChanged: (bool? value) {
                             setState(() {
                               final name = members[i]['display_name'];
                               if (value == true) {
-                                _memberMeals[name] = 1; // Default to 1 meal when selected
+                                _memberMeals[name] =
+                                    1; // Default to 1 meal when selected
                               } else {
-                                _memberMeals.remove(name); // Remove if unchecked
+                                _memberMeals
+                                    .remove(name); // Remove if unchecked
                               }
                             });
                           },
                           activeColor: Colors.green,
                           checkColor: Colors.white,
+                          side: const BorderSide(color: Colors.white, width: 2),
                         ),
                         Expanded(
                           child: Padding(
@@ -387,7 +477,6 @@ class _MealPageState extends State<MealPage> {
                               '${(i + 1)} - ${members[i]['display_name']}',
                               style: const TextStyle(
                                 color: Colors.white,
-                                
                               ),
                               textAlign: TextAlign.right,
                             ),
@@ -398,7 +487,8 @@ class _MealPageState extends State<MealPage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.remove, color: Colors.white, size: 20),
+                                icon: const Icon(Icons.remove,
+                                    color: Colors.white, size: 20),
                                 onPressed: () {
                                   setState(() {
                                     final name = members[i]['display_name'];
@@ -406,15 +496,18 @@ class _MealPageState extends State<MealPage> {
                                     if (current > 1) {
                                       _memberMeals[name] = current - 1;
                                     } else {
-                                      _memberMeals.remove(name); // Uncheck if meals reach 0
+                                      _memberMeals.remove(
+                                          name); // Uncheck if meals reach 0
                                     }
                                   });
                                 },
                                 padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                                constraints: const BoxConstraints(
+                                    minWidth: 24, minHeight: 24),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(6),
@@ -423,22 +516,24 @@ class _MealPageState extends State<MealPage> {
                                   '${_memberMeals[members[i]['display_name']] ?? 0}',
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.add, color: Colors.white, size: 20),
+                                icon: const Icon(Icons.add,
+                                    color: Colors.white, size: 20),
                                 onPressed: () {
                                   setState(() {
                                     final name = members[i]['display_name'];
-                                    _memberMeals[name] = (_memberMeals[name] ?? 0) + 1;
+                                    _memberMeals[name] =
+                                        (_memberMeals[name] ?? 0) + 1;
                                   });
                                 },
                                 padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                                constraints: const BoxConstraints(
+                                    minWidth: 24, minHeight: 24),
                               ),
                             ],
                           ),
@@ -455,83 +550,110 @@ class _MealPageState extends State<MealPage> {
 
   List<Widget> _buildStepContent(BuildContext context) {
     if (_currentStep == 0) {
+      final double formWidth = MediaQuery.of(context).size.width < 600
+          ? MediaQuery.of(context).size.width * 0.88
+          : 450.0;
       return [
-
-        TextField(
-          controller: _dateController,
-          decoration: InputDecoration(
-            labelText: 'التاريخ',
-            labelStyle: const TextStyle(
-              color: Colors.white,
-              
-            ),
-            filled: true,
-            fillColor: Colors.black.withOpacity(0.7),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          style: const TextStyle(
-            color: Colors.white,
-            
-          ),
-          readOnly: true,
-          onTap: () async {
-            DateTime? picked = await showDatePicker(
-              context: context,
-              initialDate: DateTime.now(),
-              firstDate: DateTime(2000),
-              lastDate: DateTime(2100),
-            );
-            if (picked != null) {
-              _dateController.text = DateFormat('yyyy-MM-dd').format(picked);
-            }
-          },
-        ),
-        const SizedBox(height: 20),
-        DropdownButtonFormField<String>(
-          value: _mealType,
-          decoration: InputDecoration(
-            labelText: 'اختر نوع الوجبة',
-            labelStyle: const TextStyle(
-              color: Colors.white,
-              
-            ),
-            filled: true,
-            fillColor: Colors.black.withOpacity(0.7),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          hint: const Text(
-            'نوع الوجبة',
-            style: TextStyle(
-              color: Colors.white,
-              
-            ),
-          ),
-          items: ['فطار', 'غداء', 'عشاء'].map((String value) {
-            return DropdownMenuItem<String>(
-              value: value,
-              child: Text(
-                value,
+        SizedBox(
+          width: formWidth,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _dateController,
+                decoration: InputDecoration(
+                  labelText: 'التاريخ',
+                  labelStyle: const TextStyle(
+                    color: Colors.white,
+                  ),
+                  filled: true,
+                  fillColor: Colors.black.withOpacity(0.7),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
                 style: const TextStyle(
                   color: Colors.white,
-                  
                 ),
+                readOnly: true,
+                onTap: () async {
+                  DateTime? picked = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                  );
+                  if (picked != null) {
+                    _dateController.text =
+                        DateFormat('yyyy-MM-dd').format(picked);
+                  }
+                },
               ),
-            );
-          }).toList(),
-          onChanged: (String? newValue) {
-            setState(() {
-              _mealType = newValue;
-            });
-          },
-          style: const TextStyle(
-            color: Colors.white,
-            
+              const SizedBox(height: 20),
+              DropdownButtonFormField<String>(
+                value: _mealType,
+                alignment: Alignment.centerRight,
+                decoration: InputDecoration(
+                  labelText: 'اختر نوع الوجبة',
+                  labelStyle: const TextStyle(
+                    color: Colors.white,
+                  ),
+                  filled: true,
+                  fillColor: Colors.black.withOpacity(0.7),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                hint: const Text(
+                  'نوع الوجبة',
+                  style: TextStyle(
+                    color: Colors.white,
+                  ),
+                  textDirection: TextDirection.rtl,
+                  textAlign: TextAlign.right,
+                ),
+                items: ['فطار', 'غداء', 'عشاء'].map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      value,
+                      style: const TextStyle(
+                        color: Colors.white,
+                      ),
+                      textDirection: TextDirection.rtl,
+                      textAlign: TextAlign.right,
+                    ),
+                  );
+                }).toList(),
+                selectedItemBuilder: (BuildContext context) {
+                  return ['فطار', 'غداء', 'عشاء'].map((String value) {
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        value,
+                        style: const TextStyle(
+                          color: Colors.white,
+                        ),
+                        textDirection: TextDirection.rtl,
+                        textAlign: TextAlign.right,
+                      ),
+                    );
+                  }).toList();
+                },
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _mealType = newValue;
+                  });
+                },
+                style: const TextStyle(
+                  color: Colors.white,
+                ),
+                dropdownColor: Colors.black.withOpacity(0.7),
+                isExpanded: true,
+              ),
+            ],
           ),
-          dropdownColor: Colors.black.withOpacity(0.7),
         ),
         const SizedBox(height: 20),
         _buildNavigationButtons(
@@ -553,9 +675,10 @@ class _MealPageState extends State<MealPage> {
       ];
     } else if (_currentStep == 1) {
       return [
-
         FutureBuilder<List<Map<String, dynamic>>>(
-          future: widget.db.fetchAll('SELECT item_name FROM expenses WHERE is_drink = 0 AND is_miscellaneous = 0 AND remaining > 0'),
+          future: widget.db.fetchAll(
+            'SELECT item_name, unit, remaining FROM expenses WHERE is_drink = 0 AND is_miscellaneous = 0 AND remaining > 0',
+          ),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -564,7 +687,6 @@ class _MealPageState extends State<MealPage> {
                 'حدث خطأ أثناء تحميل الأصناف',
                 style: TextStyle(
                   color: Colors.black,
-                  
                 ),
               );
             } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -574,7 +696,6 @@ class _MealPageState extends State<MealPage> {
                     'لا توجد أصناف متاحة',
                     style: TextStyle(
                       color: Colors.black,
-                      
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -593,12 +714,34 @@ class _MealPageState extends State<MealPage> {
               _currentStep = 0;
             });
           },
-          onNext: () {
+          onNext: () async {
             if (!(_selectedMeals.values.any((v) => v) || _miscVar)) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('يرجى اختيار صنف واحد على الأقل أو مصاريف أخرى!')),
+                const SnackBar(
+                    content:
+                        Text('يرجى اختيار صنف واحد على الأقل أو مصاريف أخرى!')),
               );
             } else {
+              // ضمان تحميل الوحدات لجميع الأصناف المختارة من قاعدة البيانات
+              final selectedNames = _selectedMeals.entries
+                  .where((e) => e.value)
+                  .map((e) => e.key)
+                  .toList();
+              if (selectedNames.isNotEmpty) {
+                final placeholders =
+                    List.filled(selectedNames.length, '?').join(',');
+                final unitsData = await widget.db.fetchAll(
+                  'SELECT item_name, unit FROM expenses WHERE item_name IN ($placeholders)',
+                  selectedNames,
+                );
+                for (var row in unitsData) {
+                  final name = row['item_name'] as String?;
+                  final unit = row['unit'] as String?;
+                  if (name != null && unit != null && unit.trim().isNotEmpty) {
+                    _itemUnits[name] = unit.trim();
+                  }
+                }
+              }
               setState(() {
                 _currentStep = 2;
               });
@@ -609,18 +752,24 @@ class _MealPageState extends State<MealPage> {
       ];
     } else if (_currentStep == 2) {
       return [
-
         ..._selectedMeals.entries.where((e) => e.value).map((e) {
           final controller = _mealQuantities[e.key] ??= TextEditingController();
+          final unit = _itemUnits[e.key] ?? '';
+          final unitLabel = unit.isNotEmpty ? ' ($unit)' : '';
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 6.0),
             child: TextField(
               controller: controller,
               decoration: InputDecoration(
-                labelText: 'كمية ${e.key}',
+                labelText: 'كمية ${e.key}$unitLabel',
                 labelStyle: const TextStyle(
                   color: Colors.white,
-                  
+                ),
+                suffixText: unit.isNotEmpty ? unit : null,
+                suffixStyle: const TextStyle(
+                  color: Colors.greenAccent,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
                 ),
                 filled: true,
                 fillColor: Colors.black.withOpacity(0.7),
@@ -630,9 +779,9 @@ class _MealPageState extends State<MealPage> {
               ),
               style: const TextStyle(
                 color: Colors.white,
-                
               ),
-              keyboardType: TextInputType.number,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
             ),
           );
         }).toList(),
@@ -645,7 +794,6 @@ class _MealPageState extends State<MealPage> {
                 labelText: 'مبلغ المصاريف الأخرى',
                 labelStyle: const TextStyle(
                   color: Colors.white,
-                  
                 ),
                 filled: true,
                 fillColor: Colors.black.withOpacity(0.7),
@@ -655,9 +803,9 @@ class _MealPageState extends State<MealPage> {
               ),
               style: const TextStyle(
                 color: Colors.white,
-                
               ),
-              keyboardType: TextInputType.number,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
             ),
           ),
         const SizedBox(height: 20),
@@ -673,7 +821,8 @@ class _MealPageState extends State<MealPage> {
 
             // التحقق من صحة المدخلات للأصناف المختارة
             for (var entry in _selectedMeals.entries.where((e) => e.value)) {
-              final controller = _mealQuantities[entry.key] ?? TextEditingController();
+              final controller =
+                  _mealQuantities[entry.key] ?? TextEditingController();
               final value = controller.text;
 
               if (value.isEmpty) {
@@ -689,27 +838,37 @@ class _MealPageState extends State<MealPage> {
                 if (quantity <= 0) {
                   hasError = true;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('كمية ${entry.key} يجب أن تكون أكبر من صفر!')),
+                    SnackBar(
+                        content:
+                            Text('كمية ${entry.key} يجب أن تكون أكبر من صفر!')),
                   );
                   break;
                 }
 
                 final remaining = (await widget.db.fetchOne(
-                  'SELECT remaining FROM expenses WHERE item_name = ?',
-                  [entry.key],
-                ))?['remaining'] ?? 0.0;
+                      'SELECT remaining FROM expenses WHERE item_name = ?',
+                      [entry.key],
+                    ))?['remaining'] ??
+                    0.0;
+
+                final unit = _itemUnits[entry.key] ?? '';
+                final unitStr = unit.isNotEmpty ? ' $unit' : '';
 
                 if (quantity > remaining) {
                   hasError = true;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('الكمية المطلوبة لـ ${entry.key} غير متوفرة! المتاح: $remaining')),
+                    SnackBar(
+                        content: Text(
+                            'الكمية المطلوبة لـ ${entry.key} غير متوفرة! المتاح: $remaining$unitStr')),
                   );
                   break;
                 }
               } catch (e) {
                 hasError = true;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('حقل كمية ${entry.key} يجب أن يكون رقمًا صحيحًا أو عشريًا!')),
+                  SnackBar(
+                      content: Text(
+                          'حقل كمية ${entry.key} يجب أن يكون رقمًا صحيحًا أو عشريًا!')),
                 );
                 break;
               }
@@ -717,13 +876,15 @@ class _MealPageState extends State<MealPage> {
 
             // التحقق من صحة المدخلات للمصاريف الأخرى (إذا تم اختيارها)
             if (_miscVar && !hasError) {
-              final miscController = _mealQuantities['misc'] ?? TextEditingController();
+              final miscController =
+                  _mealQuantities['misc'] ?? TextEditingController();
               final miscValue = miscController.text;
 
               if (miscValue.isEmpty) {
                 hasError = true;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('حقل مبلغ المصاريف الأخرى مطلوب!')),
+                  const SnackBar(
+                      content: Text('حقل مبلغ المصاريف الأخرى مطلوب!')),
                 );
               } else {
                 try {
@@ -731,13 +892,17 @@ class _MealPageState extends State<MealPage> {
                   if (miscAmount <= 0) {
                     hasError = true;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('مبلغ المصاريف الأخرى يجب أن يكون أكبر من صفر!')),
+                      const SnackBar(
+                          content: Text(
+                              'مبلغ المصاريف الأخرى يجب أن يكون أكبر من صفر!')),
                     );
                   }
                 } catch (e) {
                   hasError = true;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('حقل مبلغ المصاريف الأخرى يجب أن يكون رقمًا!')),
+                    const SnackBar(
+                        content: Text(
+                            'حقل مبلغ المصاريف الأخرى يجب أن يكون رقمًا!')),
                   );
                 }
               }
@@ -748,7 +913,9 @@ class _MealPageState extends State<MealPage> {
             if (!hasSelectedItems && !_miscVar && !hasError) {
               hasError = true;
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('يرجى اختيار صنف واحد على الأقل أو مصاريف أخرى!')),
+                const SnackBar(
+                    content:
+                        Text('يرجى اختيار صنف واحد على الأقل أو مصاريف أخرى!')),
               );
             }
 
@@ -763,7 +930,6 @@ class _MealPageState extends State<MealPage> {
       ];
     } else if (_currentStep == 3) {
       return [
-
         FutureBuilder<List<Map<String, dynamic>>>(
           future: widget.db.fetchAll(
             'SELECT member_id, rank, rank || \' \' || name AS display_name FROM members ORDER BY ${AppRanks.sqlRankOrder('rank')}',
@@ -776,7 +942,6 @@ class _MealPageState extends State<MealPage> {
                 'حدث خطأ أثناء تحميل الأعضاء',
                 style: TextStyle(
                   color: Colors.black,
-                  
                 ),
               );
             } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
@@ -784,7 +949,6 @@ class _MealPageState extends State<MealPage> {
                 'لا يوجد أعضاء متاحين',
                 style: TextStyle(
                   color: Colors.black,
-                  
                 ),
               );
             }

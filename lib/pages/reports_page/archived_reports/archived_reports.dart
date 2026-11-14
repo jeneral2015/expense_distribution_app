@@ -40,7 +40,8 @@ class _ArchivedReportsPageState extends State<ArchivedReportsPage> {
           {'archive_key_id': '', 'text': '--- اختر فترة الأرشيف ---'},
           ...rows.map((row) => {
                 'archive_key_id': row['archive_key_id'].toString(),
-                'text': 'ID: ${row['archive_key_id']} | من ${row['start_date']} إلى ${row['end_date']}',
+                'text':
+                    'ID: ${row['archive_key_id']} | من ${row['start_date']} إلى ${row['end_date']}',
               }),
         ];
         if (rows.isEmpty) {
@@ -52,7 +53,8 @@ class _ArchivedReportsPageState extends State<ArchivedReportsPage> {
       });
     } catch (e) {
       if (mounted) {
-        showAppSnackBar(context, 'حدث خطأ في جلب فترات الأرشيف: $e', isError: true);
+        showAppSnackBar(context, 'حدث خطأ في جلب فترات الأرشيف: $e',
+            isError: true);
       }
     }
   }
@@ -118,34 +120,64 @@ class _ArchivedReportsPageState extends State<ArchivedReportsPage> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-
               Container(
                 width: buttonWidth,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.grey.shade400),
                   boxShadow: const [
-                    BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2)),
+                    BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 6,
+                        offset: Offset(0, 2)),
                   ],
                 ),
                 child: DropdownButton<String>(
                   value: _selectedArchive,
-                  hint: const Text('اختر من القائمة', style: TextStyle(fontFamily: 'Cairo')),
+                  alignment: Alignment.centerRight,
+                  hint: const Text(
+                    'اختر من القائمة',
+                    style: TextStyle(fontFamily: 'Cairo'),
+                    textAlign: TextAlign.right,
+                    textDirection: TextDirection.rtl,
+                  ),
                   isExpanded: true,
                   underline: const SizedBox.shrink(),
                   items: _archiveOptions.map((option) {
                     return DropdownMenuItem<String>(
                       value: option['archive_key_id'],
                       enabled: option['archive_key_id'].isNotEmpty,
+                      alignment: Alignment.centerRight,
                       child: Text(
                         option['text'],
                         style: TextStyle(
                           fontFamily: 'Cairo',
                           fontSize: 13,
-                          color: option['archive_key_id'].isEmpty ? Colors.grey : Colors.black,
+                          color: option['archive_key_id'].isEmpty
+                              ? Colors.grey
+                              : Colors.black,
                         ),
+                        textAlign: TextAlign.right,
+                        textDirection: TextDirection.rtl,
+                      ),
+                    );
+                  }).toList(),
+                  selectedItemBuilder: (context) =>
+                      _archiveOptions.map((option) {
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        option['text'],
+                        style: const TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 13,
+                          color: Colors.black,
+                        ),
+                        textAlign: TextAlign.right,
+                        textDirection: TextDirection.rtl,
                       ),
                     );
                   }).toList(),
@@ -159,7 +191,6 @@ class _ArchivedReportsPageState extends State<ArchivedReportsPage> {
                 ),
               ),
               const SizedBox(height: 28),
-
               createButton(
                 text: 'عرض تقرير الاستهلاك العام',
                 onPressed: _showReport,
@@ -170,7 +201,6 @@ class _ArchivedReportsPageState extends State<ArchivedReportsPage> {
                 iconColor: Colors.white,
               ),
               const SizedBox(height: spacing),
-
               createButton(
                 text: 'عرض كافة سجلات الفترة',
                 onPressed: _navigateToArchivedData,
@@ -181,7 +211,6 @@ class _ArchivedReportsPageState extends State<ArchivedReportsPage> {
                 iconColor: Colors.white,
               ),
               const SizedBox(height: spacing * 2),
-
               createButton(
                 text: 'رجوع',
                 onPressed: () => Navigator.pop(context),

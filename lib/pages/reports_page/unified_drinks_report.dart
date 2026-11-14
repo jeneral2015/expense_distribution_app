@@ -23,7 +23,8 @@ class DrinksReportPage extends StatefulWidget {
 }
 
 class _DrinksReportPageState extends State<DrinksReportPage> {
-  final TextStyle textStyle = const TextStyle(fontSize: 14, fontFamily: 'Cairo');
+  final TextStyle textStyle =
+      const TextStyle(fontSize: 14, fontFamily: 'Cairo');
 
   List<Map<String, dynamic>> drinks = [];
   List<Map<String, dynamic>> filteredDrinks = [];
@@ -69,7 +70,7 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
         }
 
         const query = '''
-          SELECT dr.drink_record_id, m.name, dr.drink_name, dr.quantity, dr.date, dr.total_cost
+          SELECT dr.drink_record_id, m.name, m.rank, dr.drink_name, dr.quantity, dr.date, dr.total_cost
           FROM drink_records_archive dr
           JOIN members_archive m ON dr.member_id = m.member_id
           WHERE dr.archive_key_id = ?
@@ -78,7 +79,7 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
         drinks = await widget.db.fetchAll(query, [widget.archiveKeyId]);
       } else {
         const query = '''
-          SELECT dr.drink_record_id, m.name, dr.drink_name, dr.quantity, dr.date, dr.total_cost
+          SELECT dr.drink_record_id, m.name, m.rank, dr.drink_name, dr.quantity, dr.date, dr.total_cost
           FROM drink_records dr
           JOIN members m ON dr.member_id = m.member_id
           ORDER BY dr.date DESC, dr.drink_record_id DESC
@@ -87,7 +88,7 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
       }
 
       final distinctMembers = drinks
-          .map((d) => d['name']?.toString() ?? '')
+          .map((d) => _formatMember(d['rank'], d['name']))
           .where((n) => n.isNotEmpty)
           .toSet()
           .toList()
@@ -105,18 +106,30 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
       _applyFilters();
     } catch (e) {
       if (mounted) {
-        showAppSnackBar(context, 'خطأ أثناء جلب تقرير المشروبات: $e', isError: true);
+        showAppSnackBar(context, 'خطأ أثناء جلب تقرير المشروبات: $e',
+            isError: true);
       }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
+  String _formatMember(dynamic rank, dynamic name) {
+    final r = rank?.toString().trim() ?? '';
+    final n = name?.toString().trim() ?? '';
+    if (r.isNotEmpty && n.isNotEmpty) {
+      return '$r / $n';
+    }
+    return n.isNotEmpty ? n : (r.isNotEmpty ? r : 'غير معروف');
+  }
+
   void _applyFilters() {
     List<Map<String, dynamic>> result = drinks;
 
     if (_selectedMember != null && _selectedMember != 'الكل') {
-      result = result.where((d) => d['name'] == _selectedMember).toList();
+      result = result
+          .where((d) => _formatMember(d['rank'], d['name']) == _selectedMember)
+          .toList();
     }
 
     if (_selectedDrink != null && _selectedDrink != 'الكل') {
@@ -164,7 +177,8 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title: const Text('تأكيد الحذف'),
-          content: Text('هل أنت متأكد من حذف ${selectedDrinkIds.length} سجل مشروبات؟'),
+          content: Text(
+              'هل أنت متأكد من حذف ${selectedDrinkIds.length} سجل مشروبات؟'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -194,7 +208,8 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
       await _fetchDrinksData();
     } catch (e) {
       if (mounted) {
-        showAppSnackBar(context, 'خطأ أثناء حذف سجلات المشروبات: $e', isError: true);
+        showAppSnackBar(context, 'خطأ أثناء حذف سجلات المشروبات: $e',
+            isError: true);
       }
     }
   }
@@ -209,7 +224,7 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
       final columns = ['اسم المشترك', 'المشروب', 'العدد', 'التاريخ', 'التكلفة'];
       final rows = filteredDrinks
           .map((row) => [
-                row['name']?.toString() ?? '',
+                _formatMember(row['rank'], row['name']),
                 row['drink_name']?.toString() ?? '',
                 Formatters.toInt(row['quantity']),
                 row['date']?.toString() ?? '',
@@ -218,7 +233,9 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
           .toList();
 
       final extraInfo = <String, String>{
-        'نوع التقرير': isArchived ? 'تقرير المشروبات (مؤرشف)' : 'تقرير المشروبات (الشهر الحالي)',
+        'نوع التقرير': isArchived
+            ? 'تقرير المشروبات (مؤرشف)'
+            : 'تقرير المشروبات (الشهر الحالي)',
         'تاريخ التصدير': DateTime.now().toString().substring(0, 19),
         'إجمالي السجلات': '${filteredDrinks.length}',
       };
@@ -266,7 +283,8 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
                     if (isArchived) ...[
                       Text(
                         'الأرشيف: $archiveName\nالفترة: $startDate إلى $endDate',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 12),
@@ -275,7 +293,8 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
                     // Filter Card
                     Card(
                       elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
                       child: Padding(
                         padding: const EdgeInsets.all(12.0),
                         child: Wrap(
@@ -287,12 +306,32 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text('المشروب: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                                const Text('المشروب: ',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold)),
                                 DropdownButton<String>(
                                   value: _selectedDrink ?? 'الكل',
+                                  alignment: Alignment.centerRight,
                                   items: _drinkOptions.map((d) {
-                                    return DropdownMenuItem(value: d, child: Text(d));
+                                    return DropdownMenuItem(
+                                      value: d,
+                                      alignment: Alignment.centerRight,
+                                      child: Text(d,
+                                          textAlign: TextAlign.right,
+                                          textDirection: TextDirection.rtl),
+                                    );
                                   }).toList(),
+                                  selectedItemBuilder: (context) =>
+                                      _drinkOptions
+                                          .map((d) => Align(
+                                                alignment:
+                                                    Alignment.centerRight,
+                                                child: Text(d,
+                                                    textAlign: TextAlign.right,
+                                                    textDirection:
+                                                        TextDirection.rtl),
+                                              ))
+                                          .toList(),
                                   onChanged: (val) {
                                     setState(() {
                                       _selectedDrink = val;
@@ -307,12 +346,32 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text('المشترك: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                                const Text('المشترك: ',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold)),
                                 DropdownButton<String>(
                                   value: _selectedMember ?? 'الكل',
+                                  alignment: Alignment.centerRight,
                                   items: _memberOptions.map((m) {
-                                    return DropdownMenuItem(value: m, child: Text(m));
+                                    return DropdownMenuItem(
+                                      value: m,
+                                      alignment: Alignment.centerRight,
+                                      child: Text(m,
+                                          textAlign: TextAlign.right,
+                                          textDirection: TextDirection.rtl),
+                                    );
                                   }).toList(),
+                                  selectedItemBuilder: (context) =>
+                                      _memberOptions
+                                          .map((m) => Align(
+                                                alignment:
+                                                    Alignment.centerRight,
+                                                child: Text(m,
+                                                    textAlign: TextAlign.right,
+                                                    textDirection:
+                                                        TextDirection.rtl),
+                                              ))
+                                          .toList(),
                                   onChanged: (val) {
                                     setState(() {
                                       _selectedMember = val;
@@ -328,11 +387,14 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
                               icon: const Icon(Icons.date_range, size: 18),
                               label: Text(_filterStartDate == null
                                   ? 'من تاريخ'
-                                  : _filterStartDate.toString().substring(0, 10)),
+                                  : _filterStartDate
+                                      .toString()
+                                      .substring(0, 10)),
                               onPressed: () async {
                                 final d = await showDatePicker(
                                   context: context,
-                                  initialDate: _filterStartDate ?? DateTime.now(),
+                                  initialDate:
+                                      _filterStartDate ?? DateTime.now(),
                                   firstDate: DateTime(2020),
                                   lastDate: DateTime(2035),
                                 );
@@ -364,9 +426,11 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
                                 }
                               },
                             ),
-                            if (_filterStartDate != null || _filterEndDate != null)
+                            if (_filterStartDate != null ||
+                                _filterEndDate != null)
                               IconButton(
-                                icon: const Icon(Icons.clear, color: Colors.red),
+                                icon:
+                                    const Icon(Icons.clear, color: Colors.red),
                                 tooltip: 'إلغاء فلترة التاريخ',
                                 onPressed: () {
                                   setState(() {
@@ -388,7 +452,8 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
                         padding: EdgeInsets.all(32.0),
                         child: Text(
                           'لا توجد سجلات مشروبات تطابق الفلاتر!',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       )
                     else
@@ -397,7 +462,8 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
                         child: DataTable(
                           columnSpacing: 24,
                           showCheckboxColumn: false,
-                          headingRowColor: WidgetStateProperty.all(const Color(0xFF1E4C54)),
+                          headingRowColor:
+                              WidgetStateProperty.all(const Color(0xFF1E4C54)),
                           headingTextStyle: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -405,7 +471,32 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
                           ),
                           columns: [
                             if (!isArchived)
-                              const DataColumn(label: Text('تحديد')),
+                            DataColumn(
+                              label: Tooltip(
+                                message: 'تحديد الكل',
+                                child: Checkbox(
+                                  value: filteredDrinks.isNotEmpty &&
+                                      selectedDrinkIds.length ==
+                                          filteredDrinks.length,
+                                  activeColor: Colors.green,
+                                  checkColor: Colors.white,
+                                  side: const BorderSide(
+                                      color: Colors.white, width: 2),
+                                  onChanged: (bool? val) {
+                                    setState(() {
+                                      if (val == true) {
+                                        selectedDrinkIds = filteredDrinks
+                                            .map((d) =>
+                                                d['drink_record_id'] as int)
+                                            .toSet();
+                                      } else {
+                                        selectedDrinkIds.clear();
+                                      }
+                                    });
+                                  },
+                                ),
+                              ),
+                            ),
                             const DataColumn(label: Text('اسم المشترك')),
                             const DataColumn(label: Text('المشروب')),
                             const DataColumn(label: Text('العدد')),
@@ -425,6 +516,8 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
                                   DataCell(
                                     Checkbox(
                                       value: isSelected,
+                                      activeColor: Colors.green,
+                                      checkColor: Colors.white,
                                       onChanged: (sel) {
                                         setState(() {
                                           if (sel == true) {
@@ -436,11 +529,20 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
                                       },
                                     ),
                                   ),
-                                DataCell(Text(row['name']?.toString() ?? '', style: textStyle)),
-                                DataCell(Text(row['drink_name']?.toString() ?? '', style: textStyle)),
+                                DataCell(
+                                  Text(
+                                    _formatMember(row['rank'], row['name']),
+                                    style: textStyle,
+                                  ),
+                                ),
+                                DataCell(Text(
+                                    row['drink_name']?.toString() ?? '',
+                                    style: textStyle)),
                                 DataCell(Text('$qty', style: textStyle)),
-                                DataCell(Text(row['date']?.toString() ?? '', style: textStyle)),
-                                DataCell(Text('${cost.toAppString()} ج', style: textStyle)),
+                                DataCell(Text(row['date']?.toString() ?? '',
+                                    style: textStyle)),
+                                DataCell(Text('${cost.toAppString()} ج',
+                                    style: textStyle)),
                               ],
                             );
                           }).toList(),
@@ -452,7 +554,8 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
                     if (drinkQuantities.isNotEmpty) ...[
                       const Text(
                         'إجمالي الكميات المستهلكة:',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 15),
                       ),
                       const SizedBox(height: 10),
                       Wrap(
@@ -461,7 +564,8 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
                         alignment: WrapAlignment.center,
                         children: drinkQuantities.entries.map((entry) {
                           return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 8),
                             decoration: BoxDecoration(
                               color: Colors.brown.shade50,
                               borderRadius: BorderRadius.circular(10),
@@ -482,19 +586,24 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
 
                     // Total Cost card
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: const [
-                          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2)),
+                          BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 6,
+                              offset: Offset(0, 2)),
                         ],
                         border: Border.all(color: Colors.green.shade300),
                       ),
                       child: Column(
                         children: [
                           const Text('إجمالي تكلفة المشروبات',
-                              style: TextStyle(fontSize: 13, color: Colors.black54)),
+                              style: TextStyle(
+                                  fontSize: 13, color: Colors.black54)),
                           const SizedBox(height: 2),
                           Text(
                             '${totalCost.toAppString()} ج.م',
@@ -516,7 +625,8 @@ class _DrinksReportPageState extends State<DrinksReportPage> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 16.0),
                         child: createButton(
-                          text: 'حذف السجلات المحددة (${selectedDrinkIds.length})',
+                          text:
+                              'حذف السجلات المحددة (${selectedDrinkIds.length})',
                           onPressed: _deleteSelectedDrinks,
                           bgColor: Colors.red[800]!,
                           icon: Icons.delete,

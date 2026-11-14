@@ -63,10 +63,12 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
     return allItems
         .map((item) => DropdownMenuItem<String>(
               value: item,
+              alignment: Alignment.centerRight,
               child: Text(
                 item,
                 textDirection: TextDirection.rtl,
-                style: const TextStyle(color: Colors.white, ),
+                textAlign: TextAlign.right,
+                style: const TextStyle(color: Colors.white),
               ),
             ))
         .toList();
@@ -268,63 +270,22 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
       );
       AppLogger.logInfo('Fetched existing expense: $results');
 
-      // Fetch actual consumption from related tables
-      double newConsumption = 0.0;
-      if (_isDrink) {
-        final drinkConsumption = await widget.db.fetchAll(
-          'SELECT COALESCE(SUM(quantity), 0) as total FROM drink_records WHERE drink_name = ?',
-          [itemName],
-        );
-        newConsumption += _asDouble(drinkConsumption.isNotEmpty ? drinkConsumption.first['total'] : 0.0);
-      }
-      if (!_isMiscellaneous) {
-        final mealConsumption = await widget.db.fetchAll(
-          'SELECT COALESCE(SUM(quantity_used), 0) as total FROM meal_items WHERE item_name = ?',
-          [itemName],
-        );
-        newConsumption += _asDouble(mealConsumption.isNotEmpty ? mealConsumption.first['total'] : 0.0);
-      }
-      if (_isMiscellaneous) {
-        // For miscellaneous items, add the new quantity to consumption
-        newConsumption += addQty;
-      }
-
       if (results.isNotEmpty) {
         final row = results[0];
-        final double oldQty = _asDouble(row['quantity']); // إجمالي ما دخل من أول الشهر
-        final double oldPrice = _asDouble(row['price']);   // سعر الوحدة الحالي (المرجعي)
-        final double storedRemaining = _asDouble(row['remaining']);
-        final double oldConsumption = _asDouble(row['consumption']);
-        final double oldTotalSpent = _asDouble(row['total_price']); // إجمالي المصروفات حتى الآن
+        final double oldQty = _asDouble(row['quantity']); // إجمالي ما تم شراؤه حتى الآن
+        final double oldPrice = _asDouble(row['price']);   // سعر الوحدة الحالي في المخزون
+        final double oldRemaining = _asDouble(row['remaining']); // الرصيد المتبقي الفعلي في المخزن
+        final double oldConsumption = _asDouble(row['consumption']); // إجمالي الاستهلاك المسجل
+        final double oldTotalSpent = _asDouble(row['total_price']); // إجمالي المصروف التراكمي
         final String? oldUnit = row['unit'] as String?;
 
-        // Compute canonical remaining from quantity - consumption to repair possible DB drift
-        final double computedRemaining = (oldQty - oldConsumption) >= 0 ? (oldQty - oldConsumption) : 0.0;
-        if ((storedRemaining - computedRemaining).abs() > 0.0001) {
-          AppLogger.logInfo(
-              'Inconsistent remaining value for "$itemName". stored=$storedRemaining computed=$computedRemaining. Using computedRemaining to keep consistency.');
-        }
-        final double oldRemaining = computedRemaining; // use computed as source-of-truth
-
-        final double newQtyCumulative = oldQty + addQty; // إجمالي ما دخل من أول الشهر
+        final double newQtyCumulative = oldQty + addQty;
+        final double newTotalSpent = oldTotalSpent + addTotalPrice;
 
         if (_isMiscellaneous) {
-          newConsumption = oldConsumption + addQty;
-        }
-
-        // Check if new consumption exceeds total quantity
-        if (newConsumption > newQtyCumulative) {
-          AppLogger.logInfo('Consumption exceeds available quantity: $newConsumption > $newQtyCumulative');
-          _showSnackBar('الاستهلاك يتجاوز الكمية المتاحة!');
-          return;
-        }
-
-        // Calculate new remaining
-        final double newRemaining = _isMiscellaneous ? 0.0 : (newQtyCumulative - newConsumption);
-
-        if (_isMiscellaneous) {
-          final double newTotalSpent = oldTotalSpent + addTotalPrice; // إجمالي مصروفات الشهر
-          final double newUnitPrice = newQtyCumulative > 0 ? (newTotalSpent / newQtyCumulative) : oldPrice;
+          // النثريات تضاف مباشرة للاستهلاك ولا تحتفظ برصيد مخزني
+          final double newConsumption = oldConsumption + addQty;
+          final double newUnitPrice = newQtyCumulative > 0 ? (newTotalSpent / newQtyCumulative) : (addTotalPrice / addQty);
 
           await widget.db.database!.update(
             'expenses',
@@ -333,7 +294,7 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
               'consumption': newConsumption,
               'remaining': 0.0,
               'price': newUnitPrice,
-              'total_price': newTotalSpent, // تراكمي للصرف من أول الشهر
+              'total_price': newTotalSpent,
               'is_miscellaneous': 1,
               'is_drink': _isDrink ? 1 : 0,
               'unit': unit ?? oldUnit,
@@ -344,11 +305,21 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
           );
           AppLogger.logInfo('Updated (misc) expense for item "$itemName"');
         } else {
-          // إضافة مخزنية عادية: نحسب متوسط سعر الوحدة بناءً على (المتبقي القديم + الدفعة الجديدة)
-          final double inventoryOldValue = oldRemaining * oldPrice; // قيمة المتبقي القديم
-          final double inventoryNewQty = oldRemaining + addQty;     // كمية المخزون بعد الإضافة
-          final double inventoryNewValue = inventoryOldValue + addTotalPrice; // قيمة المخزون بعد الإضافة
-          final double newUnitPrice = inventoryNewQty > 0 ? (inventoryNewValue / inventoryNewQty) : oldPrice;
+          // صنف مخزني: الاستهلاك لا يتغير بمجرد الشراء
+          final double newConsumption = oldConsumption;
+          final double newRemaining = oldRemaining + addQty;
+
+          // حساب متوسط السعر المرجح بناءً على الرصيد المتبقي الفعلي في المخزن
+          double newUnitPrice;
+          if (oldRemaining > 0) {
+            final double inventoryOldValue = oldRemaining * oldPrice;
+            final double inventoryTotalQty = oldRemaining + addQty;
+            final double inventoryTotalValue = inventoryOldValue + addTotalPrice;
+            newUnitPrice = inventoryTotalQty > 0 ? (inventoryTotalValue / inventoryTotalQty) : oldPrice;
+          } else {
+            // في حال كان الرصيد السابق صفر أو سالباً، فالسعر الجديد هو سعر الدفعة الحالية
+            newUnitPrice = addTotalPrice / addQty;
+          }
 
           await widget.db.database!.update(
             'expenses',
@@ -356,8 +327,8 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
               'quantity': newQtyCumulative,
               'remaining': newRemaining,
               'consumption': newConsumption,
-              'price': newUnitPrice,      // متوسط السعر العادل الحالي للمخزون
-              'total_price': oldTotalSpent + addTotalPrice, // إجمالي المصروفات التراكمي
+              'price': newUnitPrice,
+              'total_price': newTotalSpent,
               'is_miscellaneous': 0,
               'is_drink': _isDrink ? 1 : 0,
               'unit': unit ?? oldUnit,
@@ -366,31 +337,23 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
             where: 'item_name = ?',
             whereArgs: [itemName],
           );
-          AppLogger.logInfo('Updated (stock add) expense for item "$itemName"');
+          AppLogger.logInfo('Updated (stock add) expense for item "$itemName" with unit price $newUnitPrice');
         }
       } else {
         // صنف جديد بالكامل
         final double unitPrice = addTotalPrice / addQty;
 
-        // For new items, consumption is 0 unless miscellaneous
-        if (newConsumption > addQty) {
-          AppLogger.logInfo('Consumption exceeds available quantity for new item: $newConsumption > $addQty');
-          _showSnackBar('الاستهلاك يتجاوز الكمية المتاحة!');
-          return;
-        }
-
         if (_isMiscellaneous) {
-          // نثريات لصنف جديد: لا يوجد مخزون، كله استهلاك
           await widget.db.database!.insert(
             'expenses',
             {
               'item_name': itemName,
               'unit': unit,
-              'quantity': addQty,          // إجمالي ما دخل من أول الشهر
-              'price': unitPrice,          // نحفظ آخر سعر للوحدة كمرجع
-              'total_price': addTotalPrice, // إجمالي المصروفات التراكمي
-              'remaining': 0.0,            // لا مخزون
-              'consumption': newConsumption, // كله مستهلك
+              'quantity': addQty,
+              'price': unitPrice,
+              'total_price': addTotalPrice,
+              'remaining': 0.0,
+              'consumption': addQty,
               'is_miscellaneous': 1,
               'is_drink': _isDrink ? 1 : 0,
               'date': currentDate,
@@ -398,17 +361,16 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
           );
           AppLogger.logInfo('Inserted new (misc) expense for item "$itemName"');
         } else {
-          // إضافة مخزنية لصنف جديد
           await widget.db.database!.insert(
             'expenses',
             {
               'item_name': itemName,
               'unit': unit,
-              'quantity': addQty,           // إجمالي ما دخل من أول الشهر
-              'price': unitPrice,           // سعر الوحدة الحالي
-              'total_price': addTotalPrice, // إجمالي المصروفات التراكمي
-              'remaining': addQty - newConsumption, // المخزون الحالي
-              'consumption': newConsumption,
+              'quantity': addQty,
+              'price': unitPrice,
+              'total_price': addTotalPrice,
+              'remaining': addQty,
+              'consumption': 0.0,
               'is_miscellaneous': 0,
               'is_drink': _isDrink ? 1 : 0,
               'date': currentDate,
@@ -472,138 +434,157 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
       child: BackgroundScaffold(
         title: 'إدخال المشتروات',
         backgroundImagePath: widget.backgroundImagePath,
-        child: Center(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final double formWidth = constraints.maxWidth < 650
+                ? constraints.maxWidth * 0.90
+                : 550.0;
+            return Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-
-                    FutureBuilder<List<DropdownMenuItem<String>>>(
-                      future: _getExpenseOptions(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const CircularProgressIndicator();
-                        }
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: DropdownButtonFormField<String>(
-                                value: _selectedItemName,
-                                decoration: InputDecoration(
-                                  labelText: 'اسم الصنف',
-                                  labelStyle: const TextStyle(color: Colors.white, ),
-                                  filled: true,
-                                  fillColor: Colors.black.withOpacity(0.7),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
+                child: SizedBox(
+                  width: formWidth,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      FutureBuilder<List<DropdownMenuItem<String>>>(
+                        future: _getExpenseOptions(),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const CircularProgressIndicator();
+                          }
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: _selectedItemName,
+                                  alignment: Alignment.centerRight,
+                                  decoration: InputDecoration(
+                                    labelText: 'اسم الصنف',
+                                    labelStyle: const TextStyle(color: Colors.white),
+                                    filled: true,
+                                    fillColor: Colors.black.withOpacity(0.7),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
                                   ),
-                                ),
-                                hint: const Text(
-                                  'اسم الصنف',
-                                  textDirection: TextDirection.rtl,
-                                  style: TextStyle(color: Colors.white, ),
-                                ),
-                                items: snapshot.data ?? [],
-                                onChanged: (value) {
-                                  setState(() {
-                                    _selectedItemName = value;
-                                    // Fetch unit, is_miscellaneous, and is_drink for the selected item
-                                    widget.db
-                                        .fetchAll(
-                                          'SELECT unit, is_miscellaneous, is_drink FROM expenses WHERE item_name = ?',
-                                          [value],
-                                        )
-                                        .then((results) {
-                                          setState(() {
-                                            if (results.isNotEmpty) {
-                                              _selectedUnit = results[0]['unit'] as String?;
-                                              _isMiscellaneous = (results[0]['is_miscellaneous'] as int? ?? 0) == 1;
-                                              _isDrink = (results[0]['is_drink'] as int? ?? 0) == 1;
-                                            } else {
-                                              // For non-existing items (e.g., default items or temp items), reset to defaults
-                                              _selectedUnit = null;
-                                              _isMiscellaneous = false;
-                                              _isDrink = false;
-                                            }
+                                  hint: const Text(
+                                    'اسم الصنف',
+                                    textDirection: TextDirection.rtl,
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  items: snapshot.data ?? [],
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedItemName = value;
+                                      // Fetch unit, is_miscellaneous, and is_drink for the selected item
+                                      widget.db
+                                          .fetchAll(
+                                            'SELECT unit, is_miscellaneous, is_drink FROM expenses WHERE item_name = ?',
+                                            [value],
+                                          )
+                                          .then((results) {
+                                            setState(() {
+                                              if (results.isNotEmpty) {
+                                                _selectedUnit = results[0]['unit'] as String?;
+                                                _isMiscellaneous = (results[0]['is_miscellaneous'] as int? ?? 0) == 1;
+                                                _isDrink = (results[0]['is_drink'] as int? ?? 0) == 1;
+                                              } else {
+                                                // For non-existing items (e.g., default items or temp items), reset to defaults
+                                                _selectedUnit = null;
+                                                _isMiscellaneous = false;
+                                                _isDrink = false;
+                                              }
+                                            });
                                           });
-                                        });
-                                  });
-                                },
-                                style: const TextStyle(color: Colors.white, ),
-                                dropdownColor: Colors.black.withOpacity(0.7),
-                                selectedItemBuilder: (BuildContext context) {
-                                  return (snapshot.data ?? [])
-                                      .map((DropdownMenuItem<String> item) => Text(
-                                            item.value!,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              
-                                            ),
-                                            textDirection: TextDirection.rtl,
-                                          ))
-                                      .toList();
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            if (AuthService.instance.canAdd)
-                              createButton(
-                                text: '➕ إضافة صنف',
-                                onPressed: _openAddItemDialog,
-                                bgColor: Colors.blue[700]!,
-                                width: 150,
-                                height: 50,
-                              ),
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    DropdownButtonFormField<String>(
-                      value: _selectedUnit,
-                      decoration: InputDecoration(
-                        labelText: 'الوحدة',
-                        labelStyle: const TextStyle(color: Colors.white, ),
-                        filled: true,
-                        fillColor: Colors.black.withOpacity(0.7),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      hint: const Text(
-                        'الوحدة',
-                        textDirection: TextDirection.rtl,
-                        style: TextStyle(color: Colors.white, ),
-                      ),
-                      items: _unitOptions
-                          .map((unit) => DropdownMenuItem<String>(
-                                value: unit,
-                                child: Text(
-                                  unit,
-                                  textDirection: TextDirection.rtl,
-                                  style: const TextStyle(color: Colors.white, ),
+                                    });
+                                  },
+                                  style: const TextStyle(color: Colors.white),
+                                  dropdownColor: Colors.black.withOpacity(0.7),
+                                  selectedItemBuilder: (BuildContext context) {
+                                    return (snapshot.data ?? [])
+                                        .map((DropdownMenuItem<String> item) => Align(
+                                              alignment: Alignment.centerRight,
+                                              child: Text(
+                                                item.value!,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                ),
+                                                textDirection: TextDirection.rtl,
+                                                textAlign: TextAlign.right,
+                                              ),
+                                            ))
+                                        .toList();
+                                  },
                                 ),
-                              ))
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedUnit = value;
-                        });
-                      },
-                      style: const TextStyle(color: Colors.white, ),
-                      dropdownColor: Colors.black.withOpacity(0.7),
-                      selectedItemBuilder: (BuildContext context) {
-                        return _unitOptions.map((String unit) {
-                          return Text(
-                            unit,
-                            style: const TextStyle(color: Colors.white, ),
-                            textDirection: TextDirection.rtl,
+                              ),
+                              const SizedBox(width: 10),
+                              if (AuthService.instance.canAdd)
+                                createButton(
+                                  text: '➕ إضافة صنف',
+                                  onPressed: _openAddItemDialog,
+                                  bgColor: Colors.blue[700]!,
+                                  width: 150,
+                                  height: 50,
+                                ),
+                            ],
                           );
-                        }).toList();
-                      },
-                    ),
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      DropdownButtonFormField<String>(
+                        value: _selectedUnit,
+                        alignment: Alignment.centerRight,
+                        decoration: InputDecoration(
+                          labelText: 'الوحدة',
+                          labelStyle: const TextStyle(color: Colors.white),
+                          filled: true,
+                          fillColor: Colors.black.withOpacity(0.7),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        hint: const Text(
+                          'الوحدة',
+                          textDirection: TextDirection.rtl,
+                          textAlign: TextAlign.right,
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        items: _unitOptions
+                            .map((unit) => DropdownMenuItem<String>(
+                                  value: unit,
+                                  alignment: Alignment.centerRight,
+                                  child: Text(
+                                    unit,
+                                    textDirection: TextDirection.rtl,
+                                    textAlign: TextAlign.right,
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                ))
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedUnit = value;
+                          });
+                        },
+                        style: const TextStyle(color: Colors.white),
+                        dropdownColor: Colors.black.withOpacity(0.7),
+                        selectedItemBuilder: (BuildContext context) {
+                          return _unitOptions.map((String unit) {
+                            return Align(
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                unit,
+                                style: const TextStyle(color: Colors.white),
+                                textDirection: TextDirection.rtl,
+                                textAlign: TextAlign.right,
+                              ),
+                            );
+                          }).toList();
+                        },
+                      ),
                     const SizedBox(height: 20),
                     TextField(
                       controller: _quantityController,
@@ -640,16 +621,12 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        StatefulBuilder(
-                          builder: (BuildContext context, StateSetter setCheckboxState) {
-                            return Checkbox(
-                              value: _isMiscellaneous,
-                              onChanged: (value) {
-                                setCheckboxState(() {
-                                  _isMiscellaneous = value ?? false;
-                                });
-                              },
-                            );
+                        Checkbox(
+                          value: _isMiscellaneous,
+                          onChanged: (value) {
+                            setState(() {
+                              _isMiscellaneous = value ?? false;
+                            });
                           },
                         ),
                         const Text(
@@ -662,16 +639,12 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                           textDirection: TextDirection.rtl,
                         ),
                         const SizedBox(width: 20),
-                        StatefulBuilder(
-                          builder: (BuildContext context, StateSetter setCheckboxState) {
-                            return Checkbox(
-                              value: _isDrink,
-                              onChanged: (value) {
-                                setCheckboxState(() {
-                                  _isDrink = value ?? false;
-                                });
-                              },
-                            );
+                        Checkbox(
+                          value: _isDrink,
+                          onChanged: (value) {
+                            setState(() {
+                              _isDrink = value ?? false;
+                            });
                           },
                         ),
                         const Text(
@@ -707,6 +680,9 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                 ),
               ),
             ),
+          );
+        },
+      ),
       ),
     );
   }

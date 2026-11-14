@@ -1,0 +1,27 @@
+# Dependency and Package Directories
+node_modules/
+.dart_tool/
+.pub-cache/
+vendor/
+packages/
+
+# Build Outputs and Binaries
+build/
+dist/
+out/
+target/
+bin/
+obj/
+*.apk
+*.aab
+*.exe
+
+# Version Control and Metadata
+.git/
+.worktrees/
+.claude-worktrees/
+
+# IDE and System Files
+.idea/
+.vscode/
+*.log

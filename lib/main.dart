@@ -2,7 +2,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
-
 import 'firebase_options.dart';
 import 'pages/auth/login_page.dart';
 import 'pages/auth/register_page.dart';
@@ -97,7 +96,7 @@ class _ExpensesAppState extends State<ExpensesApp> {
 
   Future<void> _onAuthChanged() async {
     final uid = widget.auth.userId;
-    
+
     // If we're just toggling loading state, only refresh the router.
     if (widget.auth.isLoadingPermissions) {
       _router.refresh();
@@ -106,7 +105,7 @@ class _ExpensesAppState extends State<ExpensesApp> {
 
     await widget.db.setUserId(uid);
     await widget.db.initializeDatabase();
-    
+
     // Refresh the UI IMMEDIATELY so the loading circle disappears.
     _router.refresh();
   }
@@ -270,6 +269,10 @@ class _ExpensesAppState extends State<ExpensesApp> {
       title: 'برنامج توزيع المصاريف',
       theme: AppTheme.light(),
       routerConfig: _router,
+      builder: (context, child) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: child ?? const SizedBox.shrink(),
+      ),
     );
   }
 }

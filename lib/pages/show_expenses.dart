@@ -116,7 +116,8 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
         _selectedRow = null;
         _selectedItemId = null;
       }
-      AppLogger.logInfo('Selected Items for Deletion: $_selectedItemsForDeletion');
+      AppLogger.logInfo(
+          'Selected Items for Deletion: $_selectedItemsForDeletion');
     });
   }
 
@@ -128,7 +129,8 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
 
     if (_selectedItemsForDeletion.length == 1) {
       final itemId = _selectedItemsForDeletion.first;
-      final item = _rows.firstWhere((row) => row['expense_id'] == itemId, orElse: () => {});
+      final item = _rows.firstWhere((row) => row['expense_id'] == itemId,
+          orElse: () => {});
       if (item.isNotEmpty) {
         _selectRowForEdit(item);
         _openEditDialog();
@@ -147,13 +149,19 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
   Future<void> _openEditDialog() async {
     final tempRow = Map<String, dynamic>.from(_selectedRow!);
 
-    final itemNameController = TextEditingController(text: tempRow['item_name'] ?? '');
+    final itemNameController =
+        TextEditingController(text: tempRow['item_name'] ?? '');
     final unitController = TextEditingController(text: tempRow['unit'] ?? '');
-    final quantityController = TextEditingController(text: formatNumber(tempRow['quantity']));
-    final priceController = TextEditingController(text: formatNumber(tempRow['price']));
-    final totalPriceController = TextEditingController(text: formatNumber(tempRow['total_price']));
-    final consumptionController = TextEditingController(text: formatNumber(tempRow['consumption']));
-    final remainingController = TextEditingController(text: formatNumber(tempRow['remaining']));
+    final quantityController =
+        TextEditingController(text: formatNumber(tempRow['quantity']));
+    final priceController =
+        TextEditingController(text: formatNumber(tempRow['price']));
+    final totalPriceController =
+        TextEditingController(text: formatNumber(tempRow['total_price']));
+    final consumptionController =
+        TextEditingController(text: formatNumber(tempRow['consumption']));
+    final remainingController =
+        TextEditingController(text: formatNumber(tempRow['remaining']));
 
     bool isMiscellaneous = (tempRow['is_miscellaneous'] == 1);
     bool isDrink = (tempRow['is_drink'] == 1);
@@ -165,8 +173,8 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
       updating = true;
       setDialogState(() {
         c.text = v;
-        c.selection = TextSelection.fromPosition(
-            TextPosition(offset: c.text.length));
+        c.selection =
+            TextSelection.fromPosition(TextPosition(offset: c.text.length));
       });
       updating = false;
     }
@@ -185,18 +193,21 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
 
               if (q == null) {
                 setTextSafely(remainingController, '', setDialogState);
-                setTextSafely(priceController, '', setDialogState); // Reset price if quantity is invalid
+                setTextSafely(priceController, '',
+                    setDialogState); // Reset price if quantity is invalid
                 return;
               }
 
               // Update remaining
               final rem = q - cons;
-              setTextSafely(remainingController, formatNumber(rem), setDialogState);
+              setTextSafely(
+                  remainingController, formatNumber(rem), setDialogState);
 
               // Update unit price
               if (total != null && q > 0) {
                 final unitPrice = total / q;
-                setTextSafely(priceController, formatNumber(unitPrice), setDialogState);
+                setTextSafely(
+                    priceController, formatNumber(unitPrice), setDialogState);
               } else {
                 setTextSafely(priceController, '', setDialogState);
               }
@@ -210,7 +221,8 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                 return;
               }
               final rem = q - cons;
-              setTextSafely(remainingController, formatNumber(rem), setDialogState);
+              setTextSafely(
+                  remainingController, formatNumber(rem), setDialogState);
             }
 
             void recalcFromTotalPrice() {
@@ -220,7 +232,8 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
 
               if (q != null && total != null && q > 0) {
                 final unitPrice = total / q;
-                setTextSafely(priceController, formatNumber(unitPrice), setDialogState);
+                setTextSafely(
+                    priceController, formatNumber(unitPrice), setDialogState);
               } else {
                 setTextSafely(priceController, '', setDialogState);
               }
@@ -297,6 +310,7 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                       value: _units.contains(unitController.text)
                           ? unitController.text
                           : null,
+                      alignment: Alignment.centerRight,
                       decoration: const InputDecoration(
                         labelText: 'الوحدة',
                         labelStyle: TextStyle(),
@@ -305,26 +319,40 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                       hint: const Text(
                         'اختر الوحدة',
                         textDirection: TextDirection.rtl,
-                        style: TextStyle( color: Colors.black),
+                        textAlign: TextAlign.right,
+                        style: TextStyle(color: Colors.black),
                       ),
                       items: _units
                           .map((unit) => DropdownMenuItem(
                                 value: unit,
+                                alignment: Alignment.centerRight,
                                 child: Text(
                                   unit,
                                   textDirection: TextDirection.rtl,
-                                  style: const TextStyle(
-                                       color: Colors.black),
+                                  textAlign: TextAlign.right,
+                                  style: const TextStyle(color: Colors.black),
                                 ),
                               ))
                           .toList(),
+                      selectedItemBuilder: (BuildContext context) {
+                        return _units.map((String unit) {
+                          return Align(
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              unit,
+                              style: const TextStyle(color: Colors.black),
+                              textDirection: TextDirection.rtl,
+                              textAlign: TextAlign.right,
+                            ),
+                          );
+                        }).toList();
+                      },
                       onChanged: (value) {
                         setDialogState(() {
                           unitController.text = value ?? '';
                         });
                       },
-                      style: const TextStyle(
-                           color: Colors.black),
+                      style: const TextStyle(color: Colors.black),
                     ),
                     const SizedBox(height: 10),
                     TextField(
@@ -360,7 +388,8 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                       ),
                       keyboardType: TextInputType.number,
                       textDirection: TextDirection.rtl,
-                      onChanged: onTotalPriceChanged, // Add callback for total price
+                      onChanged:
+                          onTotalPriceChanged, // Add callback for total price
                     ),
                     const SizedBox(height: 10),
                     TextField(
@@ -546,13 +575,15 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+    final isPortrait =
+        MediaQuery.of(context).orientation == Orientation.portrait;
     final double buttonWidth = isPortrait
         ? MediaQuery.of(context).size.width * 0.5
         : MediaQuery.of(context).size.width * 0.25;
     const double buttonHeight = 60.0;
 
-    final String pageTitle = widget.isMiscellaneous ? 'عرض النثريات' : 'عرض الأصناف المتبقية';
+    final String pageTitle =
+        widget.isMiscellaneous ? 'عرض النثريات' : 'عرض الأصناف المتبقية';
 
     return PopScope(
       canPop: false,
@@ -564,132 +595,137 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
         title: pageTitle,
         backgroundImagePath: widget.backgroundImagePath,
         child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    border: TableBorder.all(color: Colors.black, width: 1),
+                    dividerThickness: 1,
+                    decoration: const BoxDecoration(color: Colors.white),
+                    columns: [
+                      DataColumn(
+                        label: Checkbox(
+                          value: _selectedItemsForDeletion.length ==
+                                  _rows.length &&
+                              _rows.isNotEmpty,
+                          onChanged: (value) {
+                            if (value == true) {
+                              setState(() {
+                                _selectedItemsForDeletion = Set.from(_rows
+                                    .map((row) => row['expense_id'] as int));
+                                _selectedRow = null;
+                                _selectedItemId = null;
+                              });
+                            } else {
+                              setState(() {
+                                _selectedItemsForDeletion.clear();
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                      const DataColumn(
+                          label: Text('مسلسل', style: TextStyle())),
+                      const DataColumn(
+                          label: Text('اسم الصنف', style: TextStyle())),
+                      const DataColumn(
+                          label: Text('الوحدة', style: TextStyle())),
+                      const DataColumn(
+                          label: Text('الكمية', style: TextStyle())),
+                      const DataColumn(
+                          label: Text('سعر الوحدة', style: TextStyle())),
+                      const DataColumn(
+                          label: Text('السعر الإجمالي', style: TextStyle())),
+                      const DataColumn(
+                          label: Text('الاستهلاك', style: TextStyle())),
+                      const DataColumn(
+                          label: Text('المتبقي', style: TextStyle())),
+                    ],
+                    rows: _rows.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final row = entry.value;
+                      final itemId = row['expense_id'] as int;
+                      final isSelectedForEdit = _selectedItemId == itemId;
+                      final isSelectedForDeletion =
+                          _selectedItemsForDeletion.contains(itemId);
+
+                      return DataRow(
+                        color: MaterialStateProperty.resolveWith<Color?>(
+                          (Set<MaterialState> states) {
+                            if (isSelectedForEdit) {
+                              return Colors.yellow;
+                            } else if (isSelectedForDeletion) {
+                              return Colors.red.withOpacity(0.3);
+                            }
+                            return null;
+                          },
+                        ),
+                        cells: [
+                          DataCell(
+                            Checkbox(
+                              value: isSelectedForDeletion,
+                              onChanged: (value) {
+                                _toggleItemForDeletion(itemId);
+                              },
+                            ),
+                          ),
+                          DataCell(Text((index + 1).toString())),
+                          DataCell(Text(row['item_name'] ?? '')),
+                          DataCell(Text(row['unit'] ?? '',
+                              style: const TextStyle(
+                                color: Colors.black,
+                              ))),
+                          DataCell(Text(formatNumber(row['quantity']))),
+                          DataCell(Text(formatNumber(row['price']))),
+                          DataCell(Text(formatNumber(row['total_price']))),
+                          DataCell(Text(formatNumber(row['consumption']))),
+                          DataCell(Text(formatNumber(row['remaining']))),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        border: TableBorder.all(color: Colors.black, width: 1),
-                        dividerThickness: 1,
-                        decoration: const BoxDecoration(color: Colors.white),
-                        columns: [
-                          DataColumn(
-                            label: Checkbox(
-                              value: _selectedItemsForDeletion.length == _rows.length && _rows.isNotEmpty,
-                              onChanged: (value) {
-                                if (value == true) {
-                                  setState(() {
-                                    _selectedItemsForDeletion = Set.from(_rows.map((row) => row['expense_id'] as int));
-                                    _selectedRow = null;
-                                    _selectedItemId = null;
-                                  });
-                                } else {
-                                  setState(() {
-                                    _selectedItemsForDeletion.clear();
-                                  });
-                                }
-                              },
-                            ),
-                          ),
-                          const DataColumn(
-                              label: Text('مسلسل', style: TextStyle())),
-                          const DataColumn(
-                              label: Text('اسم الصنف', style: TextStyle())),
-                          const DataColumn(
-                              label: Text('الوحدة', style: TextStyle())),
-                          const DataColumn(
-                              label: Text('الكمية', style: TextStyle())),
-                          const DataColumn(
-                              label: Text('سعر الوحدة', style: TextStyle())),
-                          const DataColumn(
-                              label: Text('السعر الإجمالي', style: TextStyle())),
-                          const DataColumn(
-                              label: Text('الاستهلاك', style: TextStyle())),
-                          const DataColumn(
-                              label: Text('المتبقي', style: TextStyle())),
-                        ],
-                        rows: _rows.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final row = entry.value;
-                          final itemId = row['expense_id'] as int;
-                          final isSelectedForEdit = _selectedItemId == itemId;
-                          final isSelectedForDeletion = _selectedItemsForDeletion.contains(itemId);
-
-                          return DataRow(
-                            color: MaterialStateProperty.resolveWith<Color?>(
-                              (Set<MaterialState> states) {
-                                if (isSelectedForEdit) {
-                                  return Colors.yellow;
-                                } else if (isSelectedForDeletion) {
-                                  return Colors.red.withOpacity(0.3);
-                                }
-                                return null;
-                              },
-                            ),
-                            cells: [
-                              DataCell(
-                                Checkbox(
-                                  value: isSelectedForDeletion,
-                                  onChanged: (value) {
-                                    _toggleItemForDeletion(itemId);
-                                  },
-                                ),
-                              ),
-                              DataCell(Text((index + 1).toString())),
-                              DataCell(Text(row['item_name'] ?? '')),
-                              DataCell(Text(row['unit'] ?? '',
-                                  style: const TextStyle(
-                                      color: Colors.black, ))),
-                              DataCell(Text(formatNumber(row['quantity']))),
-                              DataCell(Text(formatNumber(row['price']))),
-                              DataCell(Text(formatNumber(row['total_price']))),
-                              DataCell(Text(formatNumber(row['consumption']))),
-                              DataCell(Text(formatNumber(row['remaining']))),
-                            ],
-                          );
-                        }).toList(),
+                    if (AuthService.instance.canEdit) ...[
+                      createButton(
+                        text: 'تعديل',
+                        onPressed: _editItem,
+                        bgColor: Colors.amber[700]!,
+                        width: buttonWidth / 3,
+                        height: buttonHeight,
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (AuthService.instance.canEdit) ...[
-                          createButton(
-                            text: 'تعديل',
-                            onPressed: _editItem,
-                            bgColor: Colors.amber[700]!,
-                            width: buttonWidth / 3,
-                            height: buttonHeight,
-                          ),
-                          const SizedBox(width: 20),
-                        ],
-                        if (AuthService.instance.canDelete) ...[
-                          createButton(
-                            text: 'حذف',
-                            onPressed: _deleteItem,
-                            bgColor: Colors.red[700]!,
-                            width: buttonWidth / 3,
-                            height: buttonHeight,
-                          ),
-                          const SizedBox(width: 20),
-                        ],
-                        createButton(
-                          text: 'رجوع',
-                          onPressed: _handleBack,
-                          bgColor: Colors.red[700]!,
-                          width: buttonWidth / 3,
-                          height: buttonHeight,
-                        ),
-                      ],
+                      const SizedBox(width: 20),
+                    ],
+                    if (AuthService.instance.canDelete) ...[
+                      createButton(
+                        text: 'حذف',
+                        onPressed: _deleteItem,
+                        bgColor: Colors.red[700]!,
+                        width: buttonWidth / 3,
+                        height: buttonHeight,
+                      ),
+                      const SizedBox(width: 20),
+                    ],
+                    createButton(
+                      text: 'رجوع',
+                      onPressed: _handleBack,
+                      bgColor: Colors.red[700]!,
+                      width: buttonWidth / 3,
+                      height: buttonHeight,
                     ),
                   ],
                 ),
-              ),
+              ],
             ),
+          ),
+        ),
       ),
     );
   }

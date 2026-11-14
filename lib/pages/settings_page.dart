@@ -406,9 +406,26 @@ class _AddOrEditSubAccountDialogState
                 ],
                 DropdownButtonFormField<String>(
                   value: _selectedRole,
+                  alignment: Alignment.centerRight,
                   items: ['مساعد', 'مراقب'].map((r) {
-                    return DropdownMenuItem(value: r, child: Text(r));
+                    return DropdownMenuItem(
+                      value: r,
+                      alignment: Alignment.centerRight,
+                      child: Text(r,
+                          textAlign: TextAlign.right,
+                          textDirection: TextDirection.rtl),
+                    );
                   }).toList(),
+                  selectedItemBuilder: (BuildContext context) {
+                    return ['مساعد', 'مراقب'].map((r) {
+                      return Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(r,
+                            textAlign: TextAlign.right,
+                            textDirection: TextDirection.rtl),
+                      );
+                    }).toList();
+                  },
                   onChanged: (val) {
                     if (val != null) {
                       setState(() {

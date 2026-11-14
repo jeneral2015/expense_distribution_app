@@ -254,13 +254,20 @@ class _DrinkPageState extends State<DrinkPage> {
       child: BackgroundScaffold(
         title: 'توزيع المشروبات',
         backgroundImagePath: widget.backgroundImagePath,
-        child: Center(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final double formWidth = constraints.maxWidth < 600
+                ? constraints.maxWidth * 0.88
+                : 450.0;
+            return Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
+                child: SizedBox(
+                  width: formWidth,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
 
                     TextField(
                       controller: _dateController,
@@ -326,7 +333,6 @@ class _DrinkPageState extends State<DrinkPage> {
                             labelText: 'اختر المشروب',
                             labelStyle: const TextStyle(
                               color: Colors.white,
-                              
                             ),
                             filled: true,
                             fillColor: Colors.black.withOpacity(0.7),
@@ -338,23 +344,39 @@ class _DrinkPageState extends State<DrinkPage> {
                             'اختر المشروب',
                             style: TextStyle(
                               color: Colors.white,
-                              
                             ),
+                            textDirection: TextDirection.rtl,
+                            textAlign: TextAlign.right,
                           ),
                           items: snapshot.data!
                               .map((row) => DropdownMenuItem<String>(
                                     value: row['item_name'],
-                                    alignment: AlignmentDirectional.centerEnd,
+                                    alignment: Alignment.centerRight,
                                     child: Text(
                                       row['item_name'],
                                       style: const TextStyle(
                                         color: Colors.white,
-                                        
                                       ),
                                       textDirection: TextDirection.rtl,
+                                      textAlign: TextAlign.right,
                                     ),
                                   ))
                               .toList(),
+                          selectedItemBuilder: (BuildContext context) {
+                            return snapshot.data!.map((row) {
+                              return Align(
+                                alignment: Alignment.centerRight,
+                                child: Text(
+                                  row['item_name'],
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                  ),
+                                  textDirection: TextDirection.rtl,
+                                  textAlign: TextAlign.right,
+                                ),
+                              );
+                            }).toList();
+                          },
                           onChanged: (String? newValue) {
                             setState(() {
                               _drinkName = newValue;
@@ -362,11 +384,10 @@ class _DrinkPageState extends State<DrinkPage> {
                           },
                           style: const TextStyle(
                             color: Colors.white,
-                            
                           ),
                           dropdownColor: Colors.black.withOpacity(0.7),
                           isExpanded: true,
-                          alignment: AlignmentDirectional.centerEnd,
+                          alignment: Alignment.centerRight,
                           itemHeight: 50,
                         );
                       },
@@ -428,7 +449,6 @@ class _DrinkPageState extends State<DrinkPage> {
                             labelText: 'اختر الشخص',
                             labelStyle: const TextStyle(
                               color: Colors.white,
-                              
                             ),
                             filled: true,
                             fillColor: Colors.black.withOpacity(0.7),
@@ -440,26 +460,43 @@ class _DrinkPageState extends State<DrinkPage> {
                             'اختر الشخص',
                             style: TextStyle(
                               color: Colors.white,
-                              
                             ),
                             textDirection: TextDirection.rtl,
+                            textAlign: TextAlign.right,
                           ),
                           items: snapshot.data!.asMap().entries.map((entry) {
                             final index = entry.key;
                             final row = entry.value;
                             return DropdownMenuItem<String>(
                               value: row['member_id'].toString(),
-                              alignment: AlignmentDirectional.centerEnd,
+                              alignment: Alignment.centerRight,
                               child: Text(
                                 '${index + 1} - ${row['rank'] ?? ''} ${row['name'] ?? ''}',
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  
                                 ),
                                 textDirection: TextDirection.rtl,
+                                textAlign: TextAlign.right,
                               ),
                             );
                           }).toList(),
+                          selectedItemBuilder: (BuildContext context) {
+                            return snapshot.data!.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final row = entry.value;
+                              return Align(
+                                alignment: Alignment.centerRight,
+                                child: Text(
+                                  '${index + 1} - ${row['rank'] ?? ''} ${row['name'] ?? ''}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                  ),
+                                  textDirection: TextDirection.rtl,
+                                  textAlign: TextAlign.right,
+                                ),
+                              );
+                            }).toList();
+                          },
                           onChanged: (String? newValue) {
                             setState(() {
                               _memberId = newValue;
@@ -467,11 +504,10 @@ class _DrinkPageState extends State<DrinkPage> {
                           },
                           style: const TextStyle(
                             color: Colors.white,
-                            
                           ),
                           dropdownColor: Colors.black.withOpacity(0.7),
                           isExpanded: true,
-                          alignment: AlignmentDirectional.centerEnd,
+                          alignment: Alignment.centerRight,
                           itemHeight: 50,
                         );
                       },
@@ -492,6 +528,9 @@ class _DrinkPageState extends State<DrinkPage> {
                 ),
               ),
             ),
+          );
+        },
+      ),
       ),
     );
   }

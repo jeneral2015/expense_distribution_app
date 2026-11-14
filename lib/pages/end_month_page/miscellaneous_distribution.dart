@@ -4,18 +4,22 @@ import 'package:intl/intl.dart';
 import '../../utils/database.dart';
 
 class MiscellaneousDistribution {
-  final BuildContext context;
+  final BuildContext? context;
   final DatabaseManager db;
 
   MiscellaneousDistribution(this.context, this.db);
 
   void showSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (context == null || !context!.mounted) return;
+    ScaffoldMessenger.of(context!).showSnackBar(
       SnackBar(content: Text(message)),
     );
   }
 
-  Future<Map<String, dynamic>> distributeMiscellaneous(DatabaseExecutor txn) async {
+  Future<Map<String, dynamic>> distributeMiscellaneous(
+    DatabaseExecutor txn, {
+    bool suppressSnackbars = false,
+  }) async {
     try {
       debugPrint("Starting distribution of miscellaneous expenses");
 
@@ -26,7 +30,9 @@ class MiscellaneousDistribution {
       debugPrint("Fetched ${miscExpenses.length} miscellaneous expenses");
 
       if (miscExpenses.isEmpty) {
-        showSnackbar("لا توجد أصناف نثريات للتوزيع!");
+        if (!suppressSnackbars) {
+          showSnackbar("لا توجد أصناف نثريات للتوزيع!");
+        }
         return {'success': false, 'expense_ids': []};
       }
 
@@ -35,17 +41,24 @@ class MiscellaneousDistribution {
           0, (sum, item) => sum + (item['total_price'] as num).toDouble());
       debugPrint("Total miscellaneous value: $totalMiscValue");
 
-      // 3. جلب عدد الوجبات لكل عضو
-      final mealCounts = await txn.rawQuery(
-        "SELECT member_id, COUNT(*) as meal_count FROM meal_records GROUP BY member_id",
+      // 3. جلب استهلاك الوجبات والمشروبات لكل عضو
+      final mealRecords = await txn.rawQuery(
+        "SELECT member_id, COUNT(*) as meal_count, SUM(final_cost) as meal_cost FROM meal_records GROUP BY member_id",
       );
-      debugPrint("Fetched ${mealCounts.length} meal counts");
+      final drinkRecords = await txn.rawQuery(
+        "SELECT member_id, SUM(total_cost) as drink_cost FROM drink_records GROUP BY member_id",
+      );
 
       final distributionDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
       final expenseIds = miscExpenses.map((item) => item['expense_id'] as int).toList();
 
-      if (mealCounts.isEmpty) {
-        // 4. لو مفيش وجبات، نوزع النثريات بالتساوي على الأعضاء
+      final totalMeals = mealRecords.fold<int>(
+        0,
+        (sum, item) => sum + ((item['meal_count'] as num?)?.toInt() ?? 0),
+      );
+
+      if (totalMeals == 0) {
+        // 4. في حال عدم وجود أي وجبات إطلاقاً، نوزع النثريات بالتساوي على الأعضاء
         debugPrint("No meal records found, distributing equally among members");
         final members = await txn.rawQuery(
           "SELECT member_id FROM members",
@@ -53,14 +66,15 @@ class MiscellaneousDistribution {
         debugPrint("Fetched ${members.length} members for equal distribution");
 
         if (members.isEmpty) {
-          showSnackbar("لا توجد أعضاء لتوزيع النثريات!");
+          if (!suppressSnackbars) {
+            showSnackbar("لا توجد أعضاء لتوزيع النثريات!");
+          }
           return {'success': false, 'expense_ids': []};
         }
 
-        final miscCostPerMember = totalMiscValue / members.length;
+        final miscCostPerMember = double.parse((totalMiscValue / members.length).toStringAsFixed(2));
         debugPrint("Misc cost per member: $miscCostPerMember");
 
-        // 5. تحديث ديون الأعضاء وتسجيل التوزيع
         for (final member in members) {
           final memberId = member['member_id'] as int;
 
@@ -73,43 +87,83 @@ class MiscellaneousDistribution {
             "INSERT INTO miscellaneous_contributions (member_id, misc_amount, meal_count, distribution_date) VALUES (?, ?, ?, ?)",
             [memberId, miscCostPerMember, 0, distributionDate],
           );
-          debugPrint("Updated member $memberId with amount: $miscCostPerMember (equal distribution)");
         }
 
-        showSnackbar("تم توزيع النثريات بالتساوي على ${members.length} عضو!");
-        debugPrint("Distribution completed equally for ${expenseIds.length} expenses");
+        if (!suppressSnackbars) {
+          showSnackbar("تم توزيع النثريات بالتساوي على ${members.length} عضو!");
+        }
         return {'success': true, 'expense_ids': expenseIds};
       }
 
-      // 6. توزيع النثريات بناءً على الوجبات (الحالة العادية)
-      final totalMeals = mealCounts.fold<int>(
-          0, (sum, item) => sum + (item['meal_count'] as int));
-      final miscCostPerMeal = totalMiscValue / totalMeals;
-      debugPrint("Misc cost per meal: $miscCostPerMeal");
+      // 5. توزيع النثريات بالمتوسط العادل بين نسبة الوجبات ونسبة مبالغ الاستهلاك
+      final Map<int, int> memberMealCounts = {};
+      final Map<int, double> memberMealCosts = {};
+      final Map<int, double> memberDrinkCosts = {};
+      final Set<int> activeMemberIds = {};
 
-      // 7. تحديث ديون الأعضاء وتسجيل التوزيع
-      for (final record in mealCounts) {
-        final memberId = record['member_id'] as int;
-        final mealCount = record['meal_count'] as int;
-        final amount = mealCount * miscCostPerMeal;
+      double totalMealsCost = 0.0;
+      for (final row in mealRecords) {
+        final memberId = row['member_id'] as int;
+        final count = (row['meal_count'] as num?)?.toInt() ?? 0;
+        final cost = (row['meal_cost'] as num?)?.toDouble() ?? 0.0;
+        memberMealCounts[memberId] = count;
+        memberMealCosts[memberId] = cost;
+        totalMealsCost += cost;
+        activeMemberIds.add(memberId);
+      }
+
+      double totalDrinksCost = 0.0;
+      for (final row in drinkRecords) {
+        final memberId = row['member_id'] as int;
+        final cost = (row['drink_cost'] as num?)?.toDouble() ?? 0.0;
+        memberDrinkCosts[memberId] = cost;
+        totalDrinksCost += cost;
+        activeMemberIds.add(memberId);
+      }
+
+      final double totalConsumption = totalMealsCost + totalDrinksCost;
+      debugPrint("Total meals count: $totalMeals, Total consumption: $totalConsumption (Meals: $totalMealsCost, Drinks: $totalDrinksCost)");
+
+      for (final memberId in activeMemberIds) {
+        final mealCount = memberMealCounts[memberId] ?? 0;
+        final mealCost = memberMealCosts[memberId] ?? 0.0;
+        final drinkCost = memberDrinkCosts[memberId] ?? 0.0;
+        final memberConsumption = mealCost + drinkCost;
+
+        // الحصة (أ): بالنسبة لعدد الوجبات
+        final double shareA = totalMeals > 0
+            ? (totalMiscValue * (mealCount / totalMeals))
+            : 0.0;
+
+        // الحصة (ب): بالنسبة لمبالغ الاستهلاك (وجبات + مشروبات)
+        final double shareB = totalConsumption > 0
+            ? (totalMiscValue * (memberConsumption / totalConsumption))
+            : shareA;
+
+        // المتوسط الحسابي العادل مقرباً لمنزلتين عشريتين
+        final double finalAmount = double.parse(((shareA + shareB) / 2).toStringAsFixed(2));
+
+        if (finalAmount <= 0) continue;
 
         await txn.rawUpdate(
           "UPDATE members SET total_due = total_due + ? WHERE member_id = ?",
-          [amount, memberId],
+          [finalAmount, memberId],
         );
 
         await txn.rawInsert(
           "INSERT INTO miscellaneous_contributions (member_id, misc_amount, meal_count, distribution_date) VALUES (?, ?, ?, ?)",
-          [memberId, amount, mealCount, distributionDate],
+          [memberId, finalAmount, mealCount, distributionDate],
         );
-        debugPrint("Updated member $memberId with amount: $amount");
+        debugPrint("Member $memberId: meals=$mealCount, consumption=$memberConsumption -> shareA=$shareA, shareB=$shareB, final=$finalAmount");
       }
 
       debugPrint("Distribution completed for ${expenseIds.length} expenses");
       return {'success': true, 'expense_ids': expenseIds};
     } catch (e) {
       debugPrint("Error distributing miscellaneous: $e");
-      showSnackbar("خطأ أثناء توزيع النثريات: $e");
+      if (!suppressSnackbars) {
+        showSnackbar("خطأ أثناء توزيع النثريات: $e");
+      }
       return {'success': false, 'expense_ids': []};
     }
   }
