@@ -52,7 +52,7 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
     try {
       final int miscValue = widget.isMiscellaneous ? 1 : 0;
       final results = await widget.db.fetchAll(
-        'SELECT expense_id, item_name, unit, quantity, price, total_price, consumption, remaining, is_miscellaneous, is_drink FROM expenses WHERE is_miscellaneous = $miscValue',
+        'SELECT expense_id, item_name, unit, quantity, price, total_price, consumption, remaining, is_miscellaneous, is_drink FROM expenses WHERE COALESCE(is_miscellaneous, 0) = $miscValue',
       );
       setState(() {
         _rows = results
@@ -573,6 +573,54 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
     showAppSnackBar(context, message);
   }
 
+  double get _totalMiscellaneous => _rows.fold<double>(
+        0.0,
+        (sum, row) => sum + Formatters.toDouble(row['total_price']),
+      );
+
+  Widget _buildMiscellaneousTotalCard() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+        border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'إجمالي النثريات',
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.black54,
+              fontFamily: 'Cairo',
+            ),
+            textDirection: TextDirection.rtl,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${_totalMiscellaneous.toAppString()} ج.م',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.green[800],
+              fontFamily: 'Cairo',
+            ),
+            textDirection: TextDirection.rtl,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isPortrait =
@@ -689,7 +737,11 @@ class _ShowExpensesPageState extends State<ShowExpensesPage> {
                     }).toList(),
                   ),
                 ),
-                const SizedBox(height: 10),
+                if (widget.isMiscellaneous && _rows.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  _buildMiscellaneousTotalCard(),
+                ],
+                const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

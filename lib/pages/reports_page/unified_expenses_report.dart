@@ -21,7 +21,8 @@ class ExpensesReportPage extends StatefulWidget {
 }
 
 class _ExpensesReportPageState extends State<ExpensesReportPage> {
-  final TextStyle textStyle = const TextStyle(fontSize: 15, fontFamily: 'Cairo');
+  final TextStyle textStyle =
+      const TextStyle(fontSize: 15, fontFamily: 'Cairo');
   final TextStyle titleStyle = const TextStyle(
     fontSize: 26,
     fontWeight: FontWeight.bold,
@@ -33,7 +34,10 @@ class _ExpensesReportPageState extends State<ExpensesReportPage> {
   final TextEditingController searchController = TextEditingController();
 
   double totalExpenses = 0.0;
+  double totalPurchasesExcludingMisc = 0.0;
+  double totalMisc = 0.0;
   double totalConsumption = 0.0;
+  double totalRemaining = 0.0;
   bool _loading = true;
 
   String archiveName = '';
@@ -62,12 +66,25 @@ class _ExpensesReportPageState extends State<ExpensesReportPage> {
         filteredExpenses = expenses;
       } else {
         filteredExpenses = expenses
-            .where((item) =>
-                (item['item_name']?.toString() ?? '').toLowerCase().contains(query))
+            .where((item) => (item['item_name']?.toString() ?? '')
+                .toLowerCase()
+                .contains(query))
             .toList();
       }
       _calculateTotals();
     });
+  }
+
+  bool _isItemMisc(Map<String, dynamic> item) {
+    final val = item['is_miscellaneous'];
+    if (val == null) return false;
+    if (val is bool) return val;
+    if (val is num) return val.toInt() == 1;
+    if (val is String) {
+      final s = val.trim().toLowerCase();
+      return s == '1' || s == 'true';
+    }
+    return false;
   }
 
   void _calculateTotals() {
@@ -75,13 +92,38 @@ class _ExpensesReportPageState extends State<ExpensesReportPage> {
       0.0,
       (sum, item) => sum + Formatters.toDouble(item['total_price']),
     );
-    totalConsumption = filteredExpenses.fold(
+
+    totalMisc = filteredExpenses.where((item) => _isItemMisc(item)).fold(
+          0.0,
+          (sum, item) => sum + Formatters.toDouble(item['total_price']),
+        );
+
+    totalPurchasesExcludingMisc =
+        filteredExpenses.where((item) => !_isItemMisc(item)).fold(
+              0.0,
+              (sum, item) => sum + Formatters.toDouble(item['total_price']),
+            );
+
+    totalRemaining = filteredExpenses.where((item) => !_isItemMisc(item)).fold(
       0.0,
-      (sum, item) =>
-          sum +
-          (Formatters.toDouble(item['consumption']) *
-              Formatters.toDouble(item['price'])),
+      (sum, item) {
+        final price = Formatters.toDouble(item['price']);
+        double remainingQty = Formatters.toDouble(item['remaining']);
+        if (remainingQty <= 0 && item['remaining'] == null) {
+          final qty = Formatters.toDouble(item['quantity']);
+          final cons = Formatters.toDouble(item['consumption']);
+          final calcRem = qty - cons;
+          if (calcRem > 0) remainingQty = calcRem;
+        }
+        return sum + (remainingQty * price);
+      },
     );
+
+    // إجمالي الاستهلاك الكلي = استهلاك المخزون (المشتريات بدون نثريات - المتبقي) + إجمالي النثريات
+    // لضمان المعادلة: إجمالي المصروفات = إجمالي الاستهلاك + إجمالي المتبقيات، وتطابق التقريرين تماماً
+    final inventoryConsumption = (totalPurchasesExcludingMisc - totalRemaining)
+        .clamp(0.0, double.infinity);
+    totalConsumption = inventoryConsumption + totalMisc;
   }
 
   Future<void> _fetchExpensesData() async {
@@ -98,26 +140,49 @@ class _ExpensesReportPageState extends State<ExpensesReportPage> {
           startDate = archiveInfo[0]['start_date'] as String? ?? '';
           endDate = archiveInfo[0]['end_date'] as String? ?? '';
         }
-
-        const query = '''
-          SELECT item_name, quantity, price, (price * quantity) as total_price, COALESCE(consumption, 0) as consumption
-          FROM expenses_archive
-          WHERE archive_key_id = ?
-        ''';
-        expenses = await widget.db.fetchAll(query, [widget.archiveKeyId]);
-      } else {
-        const query = '''
-          SELECT item_name, quantity, price, (price * quantity) as total_price, COALESCE(consumption, 0) as consumption
-          FROM expenses
-        ''';
-        expenses = await widget.db.fetchAll(query);
       }
+
+      final tableName = isArchived ? 'expenses_archive' : 'expenses';
+      final tableInfo =
+          await widget.db.fetchAll('PRAGMA table_info($tableName)');
+      final existingCols = tableInfo
+          .map((c) => (c['name'] as String? ?? '').toLowerCase())
+          .toSet();
+
+      final selectRemaining = existingCols.contains('remaining')
+          ? 'COALESCE(remaining, 0) as remaining'
+          : '0 as remaining';
+      final selectMisc = existingCols.contains('is_miscellaneous')
+          ? 'COALESCE(is_miscellaneous, 0) as is_miscellaneous'
+          : '0 as is_miscellaneous';
+      final selectConsumption = existingCols.contains('consumption')
+          ? 'COALESCE(consumption, 0) as consumption'
+          : '0 as consumption';
+      final selectTotalPrice = existingCols.contains('total_price')
+          ? 'COALESCE(total_price, price * quantity) as total_price'
+          : '(price * quantity) as total_price';
+
+      final query = isArchived
+          ? '''
+            SELECT item_name, quantity, price, $selectTotalPrice, $selectConsumption, $selectRemaining, $selectMisc
+            FROM expenses_archive
+            WHERE archive_key_id = ?
+          '''
+          : '''
+            SELECT item_name, quantity, price, $selectTotalPrice, $selectConsumption, $selectRemaining, $selectMisc
+            FROM expenses
+          ''';
+
+      expenses = isArchived
+          ? await widget.db.fetchAll(query, [widget.archiveKeyId])
+          : await widget.db.fetchAll(query);
 
       filteredExpenses = expenses;
       _calculateTotals();
     } catch (e) {
       if (mounted) {
-        showAppSnackBar(context, 'خطأ أثناء جلب تقرير المصروفات: $e', isError: true);
+        showAppSnackBar(context, 'خطأ أثناء جلب تقرير المصروفات: $e',
+            isError: true);
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -139,17 +204,27 @@ class _ExpensesReportPageState extends State<ExpensesReportPage> {
         'الاستهلاك',
       ];
 
-      final rows = filteredExpenses.map((row) => [
-            row['item_name']?.toString() ?? '',
-            Formatters.toDouble(row['quantity']),
-            Formatters.toDouble(row['price']),
-            Formatters.toDouble(row['total_price']),
-            Formatters.toDouble(row['consumption']),
-          ]).toList();
+      final rows = filteredExpenses
+          .map((row) => [
+                row['item_name']?.toString() ?? '',
+                Formatters.toDouble(row['quantity']),
+                Formatters.toDouble(row['price']),
+                Formatters.toDouble(row['total_price']),
+                Formatters.toDouble(row['consumption']),
+              ])
+          .toList();
 
       final extraInfo = <String, String>{
-        'نوع التقرير': isArchived ? 'تقرير المصروفات (مؤرشف)' : 'تقرير المصروفات (الشهر الحالي)',
+        'نوع التقرير': isArchived
+            ? 'تقرير المصروفات (مؤرشف)'
+            : 'تقرير المصروفات (الشهر الحالي)',
         'تاريخ التصدير': DateTime.now().toString().substring(0, 19),
+        'إجمالي المصروفات': '${totalExpenses.toAppString()} ج.م',
+        'مشتريات بدون نثريات':
+            '${totalPurchasesExcludingMisc.toAppString()} ج.م',
+        'إجمالي النثريات': '${totalMisc.toAppString()} ج.م',
+        'إجمالي الاستهلاك': '${totalConsumption.toAppString()} ج.م',
+        'إجمالي المتبقيات': '${totalRemaining.toAppString()} ج.م',
       };
 
       if (isArchived && archiveName.isNotEmpty) {
@@ -157,9 +232,23 @@ class _ExpensesReportPageState extends State<ExpensesReportPage> {
         extraInfo['الفترة'] = '$startDate إلى $endDate';
       }
 
+      final inventoryConsumption =
+          (totalPurchasesExcludingMisc - totalRemaining)
+              .clamp(0.0, double.infinity);
+
       final totals = [
-        ['إجمالي المصروفات', '', '', totalExpenses, ''],
-        ['إجمالي الاستهلاك', '', '', '', totalConsumption],
+        ['إجمالي المصروفات (الكلي)', '', '', totalExpenses, ''],
+        [
+          'إجمالي المشتريات (بدون نثريات)',
+          '',
+          '',
+          totalPurchasesExcludingMisc,
+          ''
+        ],
+        ['إجمالي النثريات', '', '', totalMisc, ''],
+        ['استهلاك المشتريات (المخزون)', '', '', '', inventoryConsumption],
+        ['إجمالي الاستهلاك (الكلي)', '', '', '', totalConsumption],
+        ['إجمالي قيمة المتبقيات', '', '', totalRemaining, ''],
       ];
 
       final title = isArchived
@@ -196,7 +285,8 @@ class _ExpensesReportPageState extends State<ExpensesReportPage> {
                     if (isArchived) ...[
                       Text(
                         'الأرشيف: $archiveName\nالفترة: $startDate إلى $endDate',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 12),
@@ -204,7 +294,8 @@ class _ExpensesReportPageState extends State<ExpensesReportPage> {
 
                     // Search box
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 8.0),
                       child: TextField(
                         controller: searchController,
                         decoration: InputDecoration(
@@ -232,7 +323,8 @@ class _ExpensesReportPageState extends State<ExpensesReportPage> {
                         padding: EdgeInsets.all(32.0),
                         child: Text(
                           'لا توجد بيانات مصروفات!',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       )
                     else
@@ -240,7 +332,8 @@ class _ExpensesReportPageState extends State<ExpensesReportPage> {
                         scrollDirection: Axis.horizontal,
                         child: DataTable(
                           columnSpacing: 24,
-                          headingRowColor: WidgetStateProperty.all(const Color(0xFF1E4C54)),
+                          headingRowColor:
+                              WidgetStateProperty.all(const Color(0xFF1E4C54)),
                           headingTextStyle: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -256,16 +349,24 @@ class _ExpensesReportPageState extends State<ExpensesReportPage> {
                           rows: filteredExpenses.map((row) {
                             final qty = Formatters.toDouble(row['quantity']);
                             final price = Formatters.toDouble(row['price']);
-                            final totalPrice = Formatters.toDouble(row['total_price']);
-                            final consumption = Formatters.toDouble(row['consumption']);
+                            final totalPrice =
+                                Formatters.toDouble(row['total_price']);
+                            final consumption =
+                                Formatters.toDouble(row['consumption']);
 
                             return DataRow(
                               cells: [
-                                DataCell(Text(row['item_name']?.toString() ?? '', style: textStyle)),
-                                DataCell(Text(qty.toAppString(), style: textStyle)),
-                                DataCell(Text(price.toAppString(), style: textStyle)),
-                                DataCell(Text(totalPrice.toAppString(), style: textStyle)),
-                                DataCell(Text(consumption.toAppString(), style: textStyle)),
+                                DataCell(Text(
+                                    row['item_name']?.toString() ?? '',
+                                    style: textStyle)),
+                                DataCell(
+                                    Text(qty.toAppString(), style: textStyle)),
+                                DataCell(Text(price.toAppString(),
+                                    style: textStyle)),
+                                DataCell(Text(totalPrice.toAppString(),
+                                    style: textStyle)),
+                                DataCell(Text(consumption.toAppString(),
+                                    style: textStyle)),
                               ],
                             );
                           }).toList(),
@@ -285,9 +386,25 @@ class _ExpensesReportPageState extends State<ExpensesReportPage> {
                           color: Colors.green[800]!,
                         ),
                         _buildSummaryCard(
+                          title: 'مشتريات (بدون نثريات)',
+                          value:
+                              '${totalPurchasesExcludingMisc.toAppString()} ج.م',
+                          color: Colors.teal[800]!,
+                        ),
+                        _buildSummaryCard(
+                          title: 'إجمالي النثريات',
+                          value: '${totalMisc.toAppString()} ج.م',
+                          color: Colors.amber[800]!,
+                        ),
+                        _buildSummaryCard(
                           title: 'إجمالي الاستهلاك',
                           value: '${totalConsumption.toAppString()} ج.م',
                           color: Colors.blue[800]!,
+                        ),
+                        _buildSummaryCard(
+                          title: 'إجمالي المتبقيات',
+                          value: '${totalRemaining.toAppString()} ج.م',
+                          color: Colors.deepPurple[700]!,
                         ),
                       ],
                     ),
@@ -341,11 +458,13 @@ class _ExpensesReportPageState extends State<ExpensesReportPage> {
       ),
       child: Column(
         children: [
-          Text(title, style: const TextStyle(fontSize: 14, color: Colors.black54)),
+          Text(title,
+              style: const TextStyle(fontSize: 14, color: Colors.black54)),
           const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color),
+            style: TextStyle(
+                fontSize: 18, fontWeight: FontWeight.bold, color: color),
           ),
         ],
       ),

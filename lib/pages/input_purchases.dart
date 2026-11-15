@@ -34,7 +34,8 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
 
   final List<String> _unitOptions = ['عدد', 'كيلوجرام', 'لتر'];
 
-  bool _isMiscellaneous = false; // نثريات (لا تزيد المخزون، تضاف مباشرة للاستهلاك)
+  bool _isMiscellaneous =
+      false; // نثريات (لا تزيد المخزون، تضاف مباشرة للاستهلاك)
   bool _isDrink = false;
 
   double _asDouble(dynamic v, [double fallback = 0.0]) =>
@@ -55,11 +56,13 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
   }
 
   Future<List<DropdownMenuItem<String>>> _getExpenseOptions() async {
-    final results = await widget.db.fetchAll('SELECT DISTINCT item_name FROM expenses');
+    final results =
+        await widget.db.fetchAll('SELECT DISTINCT item_name FROM expenses');
     AppLogger.logInfo('Fetched expense options: $results');
     final dbItems = results.map((row) => row['item_name'] as String).toList();
     final defaultItems = ['سكر', 'قهوة', 'شاي']; // الأصناف الافتراضية
-    final allItems = <String>{...dbItems, ..._tempItems, ...defaultItems}.toList();
+    final allItems =
+        <String>{...dbItems, ..._tempItems, ...defaultItems}.toList();
     return allItems
         .map((item) => DropdownMenuItem<String>(
               value: item,
@@ -74,7 +77,8 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
         .toList();
   }
 
-  Future<void> _searchSimilarItems(String query, StateSetter dialogSetState) async {
+  Future<void> _searchSimilarItems(
+      String query, StateSetter dialogSetState) async {
     if (query.trim().isEmpty) {
       dialogSetState(() {
         _similarItems = [];
@@ -123,14 +127,18 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                     controller: _newItemNameController,
                     decoration: InputDecoration(
                       labelText: 'اسم الصنف الجديد',
-                      labelStyle: const TextStyle(color: Colors.black, ),
+                      labelStyle: const TextStyle(
+                        color: Colors.black,
+                      ),
                       filled: true,
                       fillColor: Colors.black.withOpacity(0.1),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    style: const TextStyle(color: Colors.black, ),
+                    style: const TextStyle(
+                      color: Colors.black,
+                    ),
                     textDirection: TextDirection.rtl,
                     onChanged: (query) {
                       AppLogger.logInfo('Searching for: $query');
@@ -143,7 +151,6 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                     style: TextStyle(
                       color: Colors.red,
                       fontWeight: FontWeight.bold,
-                      
                     ),
                     textDirection: TextDirection.rtl,
                   ),
@@ -158,7 +165,9 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                         return ListTile(
                           title: Text(
                             item,
-                            style: const TextStyle(color: Colors.black, ),
+                            style: const TextStyle(
+                              color: Colors.black,
+                            ),
                             textDirection: TextDirection.rtl,
                           ),
                           onTap: () {
@@ -254,7 +263,8 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
 
     try {
       final double addQty = double.parse(quantityText);
-      final double addTotalPrice = double.parse(totalPriceText); // إجمالي سعر الدفعة الجديدة
+      final double addTotalPrice =
+          double.parse(totalPriceText); // إجمالي سعر الدفعة الجديدة
       if (addQty <= 0 || addTotalPrice <= 0) {
         AppLogger.logInfo('Invalid quantity or price');
         _showSnackBar('الكمية والسعر يجب أن يكونا أكبر من صفر!');
@@ -272,11 +282,16 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
 
       if (results.isNotEmpty) {
         final row = results[0];
-        final double oldQty = _asDouble(row['quantity']); // إجمالي ما تم شراؤه حتى الآن
-        final double oldPrice = _asDouble(row['price']);   // سعر الوحدة الحالي في المخزون
-        final double oldRemaining = _asDouble(row['remaining']); // الرصيد المتبقي الفعلي في المخزن
-        final double oldConsumption = _asDouble(row['consumption']); // إجمالي الاستهلاك المسجل
-        final double oldTotalSpent = _asDouble(row['total_price']); // إجمالي المصروف التراكمي
+        final double oldQty =
+            _asDouble(row['quantity']); // إجمالي ما تم شراؤه حتى الآن
+        final double oldPrice =
+            _asDouble(row['price']); // سعر الوحدة الحالي في المخزون
+        final double oldRemaining =
+            _asDouble(row['remaining']); // الرصيد المتبقي الفعلي في المخزن
+        final double oldConsumption =
+            _asDouble(row['consumption']); // إجمالي الاستهلاك المسجل
+        final double oldTotalSpent =
+            _asDouble(row['total_price']); // إجمالي المصروف التراكمي
         final String? oldUnit = row['unit'] as String?;
 
         final double newQtyCumulative = oldQty + addQty;
@@ -285,7 +300,9 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
         if (_isMiscellaneous) {
           // النثريات تضاف مباشرة للاستهلاك ولا تحتفظ برصيد مخزني
           final double newConsumption = oldConsumption + addQty;
-          final double newUnitPrice = newQtyCumulative > 0 ? (newTotalSpent / newQtyCumulative) : (addTotalPrice / addQty);
+          final double newUnitPrice = newQtyCumulative > 0
+              ? (newTotalSpent / newQtyCumulative)
+              : (addTotalPrice / addQty);
 
           await widget.db.database!.update(
             'expenses',
@@ -310,14 +327,22 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
           final double newRemaining = oldRemaining + addQty;
 
           // حساب متوسط السعر المرجح بناءً على الرصيد المتبقي الفعلي في المخزن
+          // مع شرط أمان يضمن تغطية القيمة الدفترية للمخزون ومنع أي عجز مستقبلي
           double newUnitPrice;
           if (oldRemaining > 0) {
             final double inventoryOldValue = oldRemaining * oldPrice;
             final double inventoryTotalQty = oldRemaining + addQty;
-            final double inventoryTotalValue = inventoryOldValue + addTotalPrice;
-            newUnitPrice = inventoryTotalQty > 0 ? (inventoryTotalValue / inventoryTotalQty) : oldPrice;
+            final double inventoryTotalValue =
+                inventoryOldValue + addTotalPrice;
+            newUnitPrice = inventoryTotalQty > 0
+                ? (inventoryTotalValue / inventoryTotalQty)
+                : oldPrice;
+            if (newUnitPrice * newRemaining < inventoryTotalValue &&
+                newRemaining > 0) {
+              newUnitPrice = inventoryTotalValue / newRemaining;
+            }
           } else {
-            // في حال كان الرصيد السابق صفر أو سالباً، فالسعر الجديد هو سعر الدفعة الحالية
+            // في حال كان الرصيد السابق صفراً، فالسعر الجديد هو سعر الدفعة الحالية
             newUnitPrice = addTotalPrice / addQty;
           }
 
@@ -337,7 +362,8 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
             where: 'item_name = ?',
             whereArgs: [itemName],
           );
-          AppLogger.logInfo('Updated (stock add) expense for item "$itemName" with unit price $newUnitPrice');
+          AppLogger.logInfo(
+              'Updated (stock add) expense for item "$itemName" with unit price $newUnitPrice');
         }
       } else {
         // صنف جديد بالكامل
@@ -376,7 +402,8 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
               'date': currentDate,
             },
           );
-          AppLogger.logInfo('Inserted new (stock) expense for item "$itemName"');
+          AppLogger.logInfo(
+              'Inserted new (stock) expense for item "$itemName"');
         }
 
         // Remove item from temp list after saving
@@ -419,7 +446,8 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+    final isPortrait =
+        MediaQuery.of(context).orientation == Orientation.portrait;
     final double buttonWidth = isPortrait
         ? MediaQuery.of(context).size.width * 0.5
         : MediaQuery.of(context).size.width * 0.25;
@@ -450,7 +478,8 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                       FutureBuilder<List<DropdownMenuItem<String>>>(
                         future: _getExpenseOptions(),
                         builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
                             return const CircularProgressIndicator();
                           }
                           return Row(
@@ -462,7 +491,8 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                                   alignment: Alignment.centerRight,
                                   decoration: InputDecoration(
                                     labelText: 'اسم الصنف',
-                                    labelStyle: const TextStyle(color: Colors.white),
+                                    labelStyle:
+                                        const TextStyle(color: Colors.white),
                                     filled: true,
                                     fillColor: Colors.black.withOpacity(0.7),
                                     border: OutlineInputBorder(
@@ -480,39 +510,47 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                                     setState(() {
                                       _selectedItemName = value;
                                       // Fetch unit, is_miscellaneous, and is_drink for the selected item
-                                      widget.db
-                                          .fetchAll(
-                                            'SELECT unit, is_miscellaneous, is_drink FROM expenses WHERE item_name = ?',
-                                            [value],
-                                          )
-                                          .then((results) {
-                                            setState(() {
-                                              if (results.isNotEmpty) {
-                                                _selectedUnit = results[0]['unit'] as String?;
-                                                _isMiscellaneous = (results[0]['is_miscellaneous'] as int? ?? 0) == 1;
-                                                _isDrink = (results[0]['is_drink'] as int? ?? 0) == 1;
-                                              } else {
-                                                // For non-existing items (e.g., default items or temp items), reset to defaults
-                                                _selectedUnit = null;
-                                                _isMiscellaneous = false;
-                                                _isDrink = false;
-                                              }
-                                            });
-                                          });
+                                      widget.db.fetchAll(
+                                        'SELECT unit, is_miscellaneous, is_drink FROM expenses WHERE item_name = ?',
+                                        [value],
+                                      ).then((results) {
+                                        setState(() {
+                                          if (results.isNotEmpty) {
+                                            _selectedUnit =
+                                                results[0]['unit'] as String?;
+                                            _isMiscellaneous = (results[0]
+                                                            ['is_miscellaneous']
+                                                        as int? ??
+                                                    0) ==
+                                                1;
+                                            _isDrink = (results[0]['is_drink']
+                                                        as int? ??
+                                                    0) ==
+                                                1;
+                                          } else {
+                                            // For non-existing items (e.g., default items or temp items), reset to defaults
+                                            _selectedUnit = null;
+                                            _isMiscellaneous = false;
+                                            _isDrink = false;
+                                          }
+                                        });
+                                      });
                                     });
                                   },
                                   style: const TextStyle(color: Colors.white),
                                   dropdownColor: Colors.black.withOpacity(0.7),
                                   selectedItemBuilder: (BuildContext context) {
                                     return (snapshot.data ?? [])
-                                        .map((DropdownMenuItem<String> item) => Align(
+                                        .map((DropdownMenuItem<String> item) =>
+                                            Align(
                                               alignment: Alignment.centerRight,
                                               child: Text(
                                                 item.value!,
                                                 style: const TextStyle(
                                                   color: Colors.white,
                                                 ),
-                                                textDirection: TextDirection.rtl,
+                                                textDirection:
+                                                    TextDirection.rtl,
                                                 textAlign: TextAlign.right,
                                               ),
                                             ))
@@ -585,104 +623,110 @@ class _InputPurchasesPageState extends State<InputPurchasesPage> {
                           }).toList();
                         },
                       ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: _quantityController,
-                      decoration: InputDecoration(
-                        labelText: 'الكمية',
-                        labelStyle: const TextStyle(color: Colors.white, ),
-                        filled: true,
-                        fillColor: Colors.black.withOpacity(0.7),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      style: const TextStyle(color: Colors.white, ),
-                      keyboardType: TextInputType.number,
-                      textDirection: TextDirection.rtl,
-                    ),
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: _totalPriceController,
-                      decoration: InputDecoration(
-                        labelText: 'السعر الإجمالي',
-                        labelStyle: const TextStyle(color: Colors.white, ),
-                        filled: true,
-                        fillColor: Colors.black.withOpacity(0.7),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      style: const TextStyle(color: Colors.white, ),
-                      keyboardType: TextInputType.number,
-                      textDirection: TextDirection.rtl,
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Checkbox(
-                          value: _isMiscellaneous,
-                          onChanged: (value) {
-                            setState(() {
-                              _isMiscellaneous = value ?? false;
-                            });
-                          },
-                        ),
-                        const Text(
-                          'هل هي نثريات؟',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                            
+                      const SizedBox(height: 20),
+                      TextField(
+                        controller: _quantityController,
+                        decoration: InputDecoration(
+                          labelText: 'الكمية',
+                          labelStyle: const TextStyle(
+                            color: Colors.white,
                           ),
-                          textDirection: TextDirection.rtl,
-                        ),
-                        const SizedBox(width: 20),
-                        Checkbox(
-                          value: _isDrink,
-                          onChanged: (value) {
-                            setState(() {
-                              _isDrink = value ?? false;
-                            });
-                          },
-                        ),
-                        const Text(
-                          'هل هي مشروبات؟',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                            
+                          filled: true,
+                          fillColor: Colors.black.withOpacity(0.7),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          textDirection: TextDirection.rtl,
                         ),
+                        style: const TextStyle(
+                          color: Colors.white,
+                        ),
+                        keyboardType: TextInputType.number,
+                        textDirection: TextDirection.rtl,
+                      ),
+                      const SizedBox(height: 20),
+                      TextField(
+                        controller: _totalPriceController,
+                        decoration: InputDecoration(
+                          labelText: 'السعر الإجمالي',
+                          labelStyle: const TextStyle(
+                            color: Colors.white,
+                          ),
+                          filled: true,
+                          fillColor: Colors.black.withOpacity(0.7),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        style: const TextStyle(
+                          color: Colors.white,
+                        ),
+                        keyboardType: TextInputType.number,
+                        textDirection: TextDirection.rtl,
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Checkbox(
+                            value: _isMiscellaneous,
+                            onChanged: (value) {
+                              setState(() {
+                                _isMiscellaneous = value ?? false;
+                              });
+                            },
+                          ),
+                          const Text(
+                            'هل هي نثريات؟',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textDirection: TextDirection.rtl,
+                          ),
+                          const SizedBox(width: 20),
+                          Checkbox(
+                            value: _isDrink,
+                            onChanged: (value) {
+                              setState(() {
+                                _isDrink = value ?? false;
+                              });
+                            },
+                          ),
+                          const Text(
+                            'هل هي مشروبات؟',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textDirection: TextDirection.rtl,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      if (AuthService.instance.canAdd) ...[
+                        createButton(
+                          text: 'حفظ',
+                          onPressed: _saveExpense,
+                          bgColor: Colors.green[700]!,
+                          width: buttonWidth,
+                          height: buttonHeight,
+                        ),
+                        const SizedBox(height: 20),
                       ],
-                    ),
-                    const SizedBox(height: 20),
-                    if (AuthService.instance.canAdd) ...[
                       createButton(
-                        text: 'حفظ',
-                        onPressed: _saveExpense,
-                        bgColor: Colors.green[700]!,
+                        text: 'رجوع',
+                        onPressed: _handleBack,
+                        bgColor: Colors.red[700]!,
                         width: buttonWidth,
                         height: buttonHeight,
                       ),
-                      const SizedBox(height: 20),
                     ],
-                    createButton(
-                      text: 'رجوع',
-                      onPressed: _handleBack,
-                      bgColor: Colors.red[700]!,
-                      width: buttonWidth,
-                      height: buttonHeight,
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          );
-        },
-      ),
+            );
+          },
+        ),
       ),
     );
   }

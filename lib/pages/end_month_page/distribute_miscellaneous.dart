@@ -56,20 +56,18 @@ class DistributeMiscellaneous {
         // استخدام الكلاس المشترك لتوزيع النثريات
         final distribution = MiscellaneousDistribution(context, db);
         final distResult = await distribution.distributeMiscellaneous(txn);
-        
+
         if (!distResult['success']) {
           return;
         }
 
         final expenseIds = distResult['expense_ids'] as List<int>;
-        if (expenseIds.isEmpty) {
-          result = {'success': false, 'archive_key_id': null};
-          return;
-        }
 
         // جلب تاريخ أول معاملة أو استخدام تاريخ اليوم
-        final distributionDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
-        final firstDate = await db.getFirstTransactionDate(txn) ?? distributionDate;
+        final distributionDate =
+            DateFormat('yyyy-MM-dd').format(DateTime.now());
+        final firstDate =
+            await db.getFirstTransactionDate(txn) ?? distributionDate;
 
         // إنشاء مفتاح الأرشفة
         final archiveKeyId = await db.getOrCreateArchiveKey(txn, firstDate);
@@ -84,7 +82,9 @@ class DistributeMiscellaneous {
         );
 
         if (newContributions.isNotEmpty) {
-          final newIds = newContributions.map((row) => row['misc_contribution_id'] as int).toList();
+          final newIds = newContributions
+              .map((row) => row['misc_contribution_id'] as int)
+              .toList();
           final placeholders = List.filled(newIds.length, '?').join(',');
 
           await txn.rawDelete(
@@ -101,27 +101,30 @@ class DistributeMiscellaneous {
           );
         }
 
-        // أرشفة وحذف النثريات من expenses
-        final placeholders2 = List.filled(expenseIds.length, '?').join(',');
-        await txn.rawDelete(
-          "DELETE FROM expenses_archive WHERE expense_id IN ($placeholders2) AND archive_key_id = ?",
-          [...expenseIds, archiveKeyId],
-        );
+        // أرشفة وحذف النثريات من expenses إذا وجدت
+        if (expenseIds.isNotEmpty) {
+          final placeholders2 = List.filled(expenseIds.length, '?').join(',');
+          await txn.rawDelete(
+            "DELETE FROM expenses_archive WHERE expense_id IN ($placeholders2) AND archive_key_id = ?",
+            [...expenseIds, archiveKeyId],
+          );
 
-        await txn.rawInsert(
-          "INSERT OR REPLACE INTO expenses_archive "
-          "(expense_id, item_name, unit, quantity, price, total_price, consumption, remaining, is_miscellaneous, is_drink, date, archive_key_id) "
-          "SELECT expense_id, item_name, unit, quantity, price, total_price, consumption, remaining, is_miscellaneous, is_drink, date, ? "
-          "FROM expenses WHERE expense_id IN ($placeholders2)",
-          [archiveKeyId, ...expenseIds],
-        );
+          await txn.rawInsert(
+            "INSERT OR REPLACE INTO expenses_archive "
+            "(expense_id, item_name, unit, quantity, price, total_price, consumption, remaining, is_miscellaneous, is_drink, date, archive_key_id) "
+            "SELECT expense_id, item_name, unit, quantity, price, total_price, consumption, remaining, is_miscellaneous, is_drink, date, ? "
+            "FROM expenses WHERE expense_id IN ($placeholders2)",
+            [archiveKeyId, ...expenseIds],
+          );
 
-        await txn.rawDelete(
-          "DELETE FROM expenses WHERE expense_id IN ($placeholders2)",
-          expenseIds,
-        );
+          await txn.rawDelete(
+            "DELETE FROM expenses WHERE expense_id IN ($placeholders2)",
+            expenseIds,
+          );
 
-        debugPrint("Archived and deleted ${expenseIds.length} miscellaneous expenses");
+          debugPrint(
+              "Archived and deleted ${expenseIds.length} miscellaneous expenses");
+        }
         result = {'success': true, 'archive_key_id': archiveKeyId};
       });
       return result;

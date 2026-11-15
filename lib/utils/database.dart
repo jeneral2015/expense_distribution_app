@@ -519,20 +519,60 @@ class DatabaseManager {
         await db.execute('ALTER TABLE miscellaneous_contributions ADD COLUMN distribution_date TEXT');
       }
 
-      // Check and add unit column for expenses
+      // Check and add missing columns for expenses
       columns = await db.rawQuery('PRAGMA table_info(expenses)');
       columnNames = columns.map((col) => col['name'] as String).toList();
       if (!columnNames.contains('unit')) {
         await db.execute('ALTER TABLE expenses ADD COLUMN unit TEXT');
         AppLogger.logInfo('Added unit column to expenses table');
       }
+      if (!columnNames.contains('remaining')) {
+        await db.execute('ALTER TABLE expenses ADD COLUMN remaining REAL DEFAULT 0');
+        AppLogger.logInfo('Added remaining column to expenses table');
+      }
+      if (!columnNames.contains('consumption')) {
+        await db.execute('ALTER TABLE expenses ADD COLUMN consumption REAL DEFAULT 0');
+        AppLogger.logInfo('Added consumption column to expenses table');
+      }
+      if (!columnNames.contains('is_miscellaneous')) {
+        await db.execute('ALTER TABLE expenses ADD COLUMN is_miscellaneous INTEGER DEFAULT 0');
+        AppLogger.logInfo('Added is_miscellaneous column to expenses table');
+      }
+      if (!columnNames.contains('is_drink')) {
+        await db.execute('ALTER TABLE expenses ADD COLUMN is_drink INTEGER DEFAULT 0');
+        AppLogger.logInfo('Added is_drink column to expenses table');
+      }
+      if (!columnNames.contains('total_price')) {
+        await db.execute('ALTER TABLE expenses ADD COLUMN total_price REAL DEFAULT 0');
+        AppLogger.logInfo('Added total_price column to expenses table');
+      }
 
-      // Check and add unit column for expenses_archive
+      // Check and add missing columns for expenses_archive
       columns = await db.rawQuery('PRAGMA table_info(expenses_archive)');
       columnNames = columns.map((col) => col['name'] as String).toList();
       if (!columnNames.contains('unit')) {
         await db.execute('ALTER TABLE expenses_archive ADD COLUMN unit TEXT');
         AppLogger.logInfo('Added unit column to expenses_archive table');
+      }
+      if (!columnNames.contains('remaining')) {
+        await db.execute('ALTER TABLE expenses_archive ADD COLUMN remaining REAL DEFAULT 0');
+        AppLogger.logInfo('Added remaining column to expenses_archive table');
+      }
+      if (!columnNames.contains('consumption')) {
+        await db.execute('ALTER TABLE expenses_archive ADD COLUMN consumption REAL DEFAULT 0');
+        AppLogger.logInfo('Added consumption column to expenses_archive table');
+      }
+      if (!columnNames.contains('is_miscellaneous')) {
+        await db.execute('ALTER TABLE expenses_archive ADD COLUMN is_miscellaneous INTEGER DEFAULT 0');
+        AppLogger.logInfo('Added is_miscellaneous column to expenses_archive table');
+      }
+      if (!columnNames.contains('is_drink')) {
+        await db.execute('ALTER TABLE expenses_archive ADD COLUMN is_drink INTEGER DEFAULT 0');
+        AppLogger.logInfo('Added is_drink column to expenses_archive table');
+      }
+      if (!columnNames.contains('total_price')) {
+        await db.execute('ALTER TABLE expenses_archive ADD COLUMN total_price REAL DEFAULT 0');
+        AppLogger.logInfo('Added total_price column to expenses_archive table');
       }
 
       // Migration for decimal quantities - check if quantity column is still INTEGER

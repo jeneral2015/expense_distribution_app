@@ -22,7 +22,8 @@ class ConsumptionReportPage extends StatefulWidget {
 }
 
 class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
-  final TextStyle textStyle = const TextStyle(fontSize: 13, fontFamily: 'Cairo');
+  final TextStyle textStyle =
+      const TextStyle(fontSize: 13, fontFamily: 'Cairo');
 
   List<Map<String, dynamic>> summaryList = [];
   double totalMeals = 0.0;
@@ -76,14 +77,16 @@ class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
           WHERE csa.archive_key_id = ? AND m.archive_key_id = ?
           ORDER BY ${AppRanks.sqlRankOrder('m.rank')}, m.name ASC
         ''';
-        summaryList = await widget.db.fetchAll(query, [widget.archiveKeyId, widget.archiveKeyId]);
+        summaryList = await widget.db
+            .fetchAll(query, [widget.archiveKeyId, widget.archiveKeyId]);
 
         const remQuery = '''
           SELECT COALESCE(SUM(remaining * price), 0) AS total_remaining
           FROM expenses_archive
           WHERE archive_key_id = ? AND remaining > 0
         ''';
-        final remResults = await widget.db.fetchAll(remQuery, [widget.archiveKeyId]);
+        final remResults =
+            await widget.db.fetchAll(remQuery, [widget.archiveKeyId]);
         totalRemainingInventory = remResults.isNotEmpty
             ? Formatters.toDouble(remResults[0]['total_remaining'])
             : 0.0;
@@ -130,15 +133,98 @@ class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
             : 0.0;
       }
 
-      totalMeals = summaryList.fold(0.0, (s, i) => s + Formatters.toDouble(i['total_meals']));
-      totalDrinks = summaryList.fold(0.0, (s, i) => s + Formatters.toDouble(i['total_drinks']));
-      totalMisc = summaryList.fold(0.0, (s, i) => s + Formatters.toDouble(i['total_miscellaneous']));
-      totalConsumption = summaryList.fold(0.0, (s, i) => s + Formatters.toDouble(i['total_consumption']));
-      totalContributions = summaryList.fold(0.0, (s, i) => s + Formatters.toDouble(i['total_contribution']));
-      totalRemainingCash = totalContributions - (totalConsumption + totalRemainingInventory);
+      double totalPurchasesExcludingMisc = 0.0;
+      double undistributedMisc = 0.0;
+      if (isArchived) {
+        const purQuery = '''
+          SELECT COALESCE(SUM(total_price), 0) AS total_purchases
+          FROM expenses_archive
+          WHERE archive_key_id = ? AND COALESCE(is_miscellaneous, 0) = 0
+        ''';
+        final purResults =
+            await widget.db.fetchAll(purQuery, [widget.archiveKeyId]);
+        if (purResults.isNotEmpty) {
+          totalPurchasesExcludingMisc =
+              Formatters.toDouble(purResults[0]['total_purchases']);
+        }
+
+        const miscPurQuery = '''
+          SELECT COALESCE(SUM(total_price), 0) AS total_misc
+          FROM expenses_archive
+          WHERE archive_key_id = ? AND COALESCE(is_miscellaneous, 0) = 1
+        ''';
+        final miscPurResults =
+            await widget.db.fetchAll(miscPurQuery, [widget.archiveKeyId]);
+        if (miscPurResults.isNotEmpty) {
+          undistributedMisc =
+              Formatters.toDouble(miscPurResults[0]['total_misc']);
+        }
+      } else {
+        const purQuery = '''
+          SELECT COALESCE(SUM(total_price), 0) AS total_purchases
+          FROM expenses
+          WHERE COALESCE(is_miscellaneous, 0) = 0
+        ''';
+        final purResults = await widget.db.fetchAll(purQuery);
+        if (purResults.isNotEmpty) {
+          totalPurchasesExcludingMisc =
+              Formatters.toDouble(purResults[0]['total_purchases']);
+        }
+
+        const miscPurQuery = '''
+          SELECT COALESCE(SUM(total_price), 0) AS total_misc
+          FROM expenses
+          WHERE COALESCE(is_miscellaneous, 0) = 1
+        ''';
+        final miscPurResults = await widget.db.fetchAll(miscPurQuery);
+        if (miscPurResults.isNotEmpty) {
+          undistributedMisc =
+              Formatters.toDouble(miscPurResults[0]['total_misc']);
+        }
+      }
+
+      totalMeals = summaryList.fold(
+          0.0, (s, i) => s + Formatters.toDouble(i['total_meals']));
+      totalDrinks = summaryList.fold(
+          0.0, (s, i) => s + Formatters.toDouble(i['total_drinks']));
+      final recordedMisc = summaryList.fold(
+          0.0, (s, i) => s + Formatters.toDouble(i['total_miscellaneous']));
+
+      // النثريات الفعلية (الموزعة على المشتركين + غير الموزعة المسجلة في المصروفات)
+      // في الأرشيف: إذا وُزعت النثريات تكون مسجلة في closure_summary_archive ومؤرشفة في expenses_archive، لذا نمنع الازدواج
+      final double baseMisc = isArchived
+          ? (recordedMisc > 0 ? recordedMisc : undistributedMisc)
+          : (recordedMisc + undistributedMisc);
+
+      // حساب فارق تسوية الاستهلاك لضمان مطابقة (المشتريات = الاستهلاك + المتبقي)
+      // الفارق هو ما خرج من المخزن ولم يُسجل كوجبات أو مشروبات
+      if (totalPurchasesExcludingMisc > 0) {
+        final inventoryConsumed =
+            (totalPurchasesExcludingMisc - totalRemainingInventory)
+                .clamp(0.0, double.infinity);
+        final recordedMealsAndDrinks = totalMeals + totalDrinks;
+        final inventoryDiscrepancy = inventoryConsumed - recordedMealsAndDrinks;
+
+        // إذا كان هناك فارق ولم يكن قد استوعب بالفعل في النثريات الموزعة
+        final alreadyAbsorbedInMisc = (baseMisc - undistributedMisc);
+        final remainingDiscrepancy =
+            (inventoryDiscrepancy - alreadyAbsorbedInMisc)
+                .clamp(0.0, double.infinity);
+
+        totalMisc = baseMisc + remainingDiscrepancy;
+      } else {
+        totalMisc = baseMisc;
+      }
+
+      totalConsumption = totalMeals + totalDrinks + totalMisc;
+      totalContributions = summaryList.fold(
+          0.0, (s, i) => s + Formatters.toDouble(i['total_contribution']));
+      totalRemainingCash =
+          totalContributions - (totalConsumption + totalRemainingInventory);
     } catch (e) {
       if (mounted) {
-        showAppSnackBar(context, 'خطأ أثناء جلب ملخص الاستهلاك: $e', isError: true);
+        showAppSnackBar(context, 'خطأ أثناء جلب ملخص الاستهلاك: $e',
+            isError: true);
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -181,10 +267,13 @@ class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
       }).toList();
 
       final extraInfo = <String, String>{
-        'نوع التقرير': isArchived ? 'تقرير استهلاك الأعضاء (مؤرشف)' : 'تقرير استهلاك الأعضاء (الشهر الحالي)',
+        'نوع التقرير': isArchived
+            ? 'تقرير استهلاك الأعضاء (مؤرشف)'
+            : 'تقرير استهلاك الأعضاء (الشهر الحالي)',
         'تاريخ التصدير': DateTime.now().toString().substring(0, 19),
         'إجمالي المساهمات': '${totalContributions.toAppString()} ج.م',
         'إجمالي الاستهلاك': '${totalConsumption.toAppString()} ج.م',
+        'إجمالي النثريات': '${totalMisc.toAppString()} ج.م',
         'إجمالي المتبقيات': '${totalRemainingInventory.toAppString()} ج.م',
         'صافي النقدية المتبقية': '${totalRemainingCash.toAppString()} ج.م',
       };
@@ -194,7 +283,8 @@ class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
         extraInfo['الفترة'] = '$startDate إلى $endDate';
       }
 
-      final memberRemainingTotal = summaryList.fold(0.0, (s, i) => s + Formatters.toDouble(i['remaining_cash']));
+      final memberRemainingTotal = summaryList.fold(
+          0.0, (s, i) => s + Formatters.toDouble(i['remaining_cash']));
 
       final totals = [
         [
@@ -266,7 +356,8 @@ class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
                     if (isArchived) ...[
                       Text(
                         'الأرشيف: $archiveName\nالفترة: $startDate إلى $endDate',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 14),
@@ -277,7 +368,8 @@ class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
                         padding: EdgeInsets.all(32.0),
                         child: Text(
                           'لا توجد بيانات استهلاك لهذا الشهر!',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       )
                     else
@@ -285,8 +377,10 @@ class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
                         scrollDirection: Axis.horizontal,
                         child: DataTable(
                           columnSpacing: 18,
-                          border: TableBorder.all(color: Colors.grey.shade400, width: 1),
-                          headingRowColor: WidgetStateProperty.all(const Color(0xFF1E4C54)),
+                          border: TableBorder.all(
+                              color: Colors.grey.shade400, width: 1),
+                          headingRowColor:
+                              WidgetStateProperty.all(const Color(0xFF1E4C54)),
                           headingTextStyle: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -307,26 +401,48 @@ class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
                           rows: summaryList.asMap().entries.map((entry) {
                             final idx = entry.key + 1;
                             final row = entry.value;
-                            final rem = Formatters.toDouble(row['remaining_cash']);
+                            final rem =
+                                Formatters.toDouble(row['remaining_cash']);
 
                             return DataRow(
                               cells: [
-                                DataCell(Center(child: Text('$idx', style: textStyle))),
-                                DataCell(Text(row['rank']?.toString() ?? '', style: textStyle)),
-                                DataCell(Text(row['name']?.toString() ?? '', style: textStyle)),
-                                DataCell(Text(Formatters.toDouble(row['total_meals']).toAppString(), style: textStyle)),
-                                DataCell(Text(Formatters.toDouble(row['total_drinks']).toAppString(), style: textStyle)),
-                                DataCell(Text(Formatters.toDouble(row['total_miscellaneous']).toAppString(), style: textStyle)),
+                                DataCell(Center(
+                                    child: Text('$idx', style: textStyle))),
+                                DataCell(Text(row['rank']?.toString() ?? '',
+                                    style: textStyle)),
+                                DataCell(Text(row['name']?.toString() ?? '',
+                                    style: textStyle)),
                                 DataCell(Text(
-                                  Formatters.toDouble(row['total_consumption']).toAppString(),
-                                  style: textStyle.copyWith(fontWeight: FontWeight.bold),
+                                    Formatters.toDouble(row['total_meals'])
+                                        .toAppString(),
+                                    style: textStyle)),
+                                DataCell(Text(
+                                    Formatters.toDouble(row['total_drinks'])
+                                        .toAppString(),
+                                    style: textStyle)),
+                                DataCell(Text(
+                                    Formatters.toDouble(
+                                            row['total_miscellaneous'])
+                                        .toAppString(),
+                                    style: textStyle)),
+                                DataCell(Text(
+                                  Formatters.toDouble(row['total_consumption'])
+                                      .toAppString(),
+                                  style: textStyle.copyWith(
+                                      fontWeight: FontWeight.bold),
                                 )),
-                                DataCell(Text(Formatters.toDouble(row['total_contribution']).toAppString(), style: textStyle)),
+                                DataCell(Text(
+                                    Formatters.toDouble(
+                                            row['total_contribution'])
+                                        .toAppString(),
+                                    style: textStyle)),
                                 DataCell(Text(
                                   rem.toAppString(),
                                   style: textStyle.copyWith(
                                     fontWeight: FontWeight.bold,
-                                    color: rem < 0 ? Colors.red[800] : Colors.green[800],
+                                    color: rem < 0
+                                        ? Colors.red[800]
+                                        : Colors.green[800],
                                   ),
                                 )),
                               ],
@@ -334,6 +450,35 @@ class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
                           }).toList(),
                         ),
                       ),
+                    Container(
+                      margin: const EdgeInsets.only(top: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.info_outline,
+                              size: 18, color: Colors.blue.shade800),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'ملاحظة: عمود الاستهلاك بالجدول يمثل وجبات ومشروبات كل مشترك، وإجمالي الاستهلاك بالبطاقات أدناه يشمل النثريات وفارق تسوية المخزون لضمان تمام مطابقة الصندوق بنسبة 100%.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.blue.shade900,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 20),
 
                     // Totals Grid
@@ -342,12 +487,18 @@ class _ConsumptionReportPageState extends State<ConsumptionReportPage> {
                       runSpacing: 10,
                       alignment: WrapAlignment.center,
                       children: [
-                        _buildMetricBox('إجمالي الوجبات', totalMeals, Colors.teal),
-                        _buildMetricBox('إجمالي المشروبات', totalDrinks, Colors.brown),
-                        _buildMetricBox('إجمالي النثريات', totalMisc, Colors.orange),
-                        _buildMetricBox('إجمالي الاستهلاك', totalConsumption, Colors.indigo),
-                        _buildMetricBox('إجمالي المساهمات', totalContributions, Colors.blue),
-                        _buildMetricBox('إجمالي المتبقيات', totalRemainingInventory, Colors.purple),
+                        _buildMetricBox(
+                            'إجمالي الوجبات', totalMeals, Colors.teal),
+                        _buildMetricBox(
+                            'إجمالي المشروبات', totalDrinks, Colors.brown),
+                        _buildMetricBox(
+                            'إجمالي النثريات', totalMisc, Colors.orange),
+                        _buildMetricBox('إجمالي الاستهلاك', totalConsumption,
+                            Colors.indigo),
+                        _buildMetricBox('إجمالي المساهمات', totalContributions,
+                            Colors.blue),
+                        _buildMetricBox('إجمالي المتبقيات',
+                            totalRemainingInventory, Colors.purple),
                         _buildMetricBox(
                           'صافي النقدية المتبقية',
                           totalRemainingCash,

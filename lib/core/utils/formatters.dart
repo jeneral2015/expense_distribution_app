@@ -20,10 +20,14 @@ class Formatters {
 
   static int toInt(dynamic v, [int fallback = 0]) {
     if (v == null) return fallback;
+    if (v is bool) return v ? 1 : 0;
     if (v is int) return v;
     if (v is num) return v.toInt();
     if (v is String) {
-      final p = int.tryParse(v.trim());
+      final s = v.trim().toLowerCase();
+      if (s == 'true') return 1;
+      if (s == 'false') return 0;
+      final p = int.tryParse(s);
       if (p != null) return p;
     }
     return fallback;

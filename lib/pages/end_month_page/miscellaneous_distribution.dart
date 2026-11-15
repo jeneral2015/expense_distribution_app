@@ -29,17 +29,9 @@ class MiscellaneousDistribution {
       );
       debugPrint("Fetched ${miscExpenses.length} miscellaneous expenses");
 
-      if (miscExpenses.isEmpty) {
-        if (!suppressSnackbars) {
-          showSnackbar("لا توجد أصناف نثريات للتوزيع!");
-        }
-        return {'success': false, 'expense_ids': []};
-      }
-
-      // 2. حساب إجمالي قيمة النثريات
-      final totalMiscValue = miscExpenses.fold<double>(
+      // 2. حساب إجمالي قيمة النثريات المسجلة
+      double totalMiscValue = miscExpenses.fold<double>(
           0, (sum, item) => sum + (item['total_price'] as num).toDouble());
-      debugPrint("Total miscellaneous value: $totalMiscValue");
 
       // 3. جلب استهلاك الوجبات والمشروبات لكل عضو
       final mealRecords = await txn.rawQuery(
@@ -49,8 +41,46 @@ class MiscellaneousDistribution {
         "SELECT member_id, SUM(total_cost) as drink_cost FROM drink_records GROUP BY member_id",
       );
 
+      // 4. احتساب فارق تسوية الاستهلاك للمخزن (المشتريات بدون نثريات - المتبقي) - (الوجبات + المشروبات)
+      // لضمان استرداد أي فارق محاسبي ضمن التوزيع ومنع أي عجز بالصندوق
+      final purData = await txn.rawQuery(
+        "SELECT COALESCE(SUM(total_price), 0) as pur, COALESCE(SUM(remaining * price), 0) as rem FROM expenses WHERE COALESCE(is_miscellaneous, 0) = 0",
+      );
+      double inventoryDiscrepancy = 0.0;
+      if (purData.isNotEmpty) {
+        final double pur = (purData.first['pur'] as num?)?.toDouble() ?? 0.0;
+        final double rem = (purData.first['rem'] as num?)?.toDouble() ?? 0.0;
+        final double inventoryConsumed =
+            (pur - rem).clamp(0.0, double.infinity);
+
+        final double totalMealsCost = mealRecords.fold<double>(
+            0.0, (s, r) => s + ((r['meal_cost'] as num?)?.toDouble() ?? 0.0));
+        final double totalDrinksCost = drinkRecords.fold<double>(
+            0.0, (s, r) => s + ((r['drink_cost'] as num?)?.toDouble() ?? 0.0));
+
+        final double recordedConsumption = totalMealsCost + totalDrinksCost;
+        if (inventoryConsumed > recordedConsumption) {
+          inventoryDiscrepancy = inventoryConsumed - recordedConsumption;
+        }
+      }
+
+      if (inventoryDiscrepancy > 0.001) {
+        totalMiscValue += inventoryDiscrepancy;
+        debugPrint(
+            "Added inventory discrepancy ($inventoryDiscrepancy) to miscellaneous distribution total: $totalMiscValue");
+      }
+
+      if (miscExpenses.isEmpty && inventoryDiscrepancy <= 0.001) {
+        if (!suppressSnackbars) {
+          showSnackbar("لا توجد أصناف نثريات للتوزيع!");
+        }
+        return {'success': false, 'expense_ids': []};
+      }
+      debugPrint("Total miscellaneous value for distribution: $totalMiscValue");
+
       final distributionDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      final expenseIds = miscExpenses.map((item) => item['expense_id'] as int).toList();
+      final expenseIds =
+          miscExpenses.map((item) => item['expense_id'] as int).toList();
 
       final totalMeals = mealRecords.fold<int>(
         0,
@@ -72,7 +102,8 @@ class MiscellaneousDistribution {
           return {'success': false, 'expense_ids': []};
         }
 
-        final miscCostPerMember = double.parse((totalMiscValue / members.length).toStringAsFixed(2));
+        final miscCostPerMember =
+            double.parse((totalMiscValue / members.length).toStringAsFixed(2));
         debugPrint("Misc cost per member: $miscCostPerMember");
 
         for (final member in members) {
@@ -122,7 +153,8 @@ class MiscellaneousDistribution {
       }
 
       final double totalConsumption = totalMealsCost + totalDrinksCost;
-      debugPrint("Total meals count: $totalMeals, Total consumption: $totalConsumption (Meals: $totalMealsCost, Drinks: $totalDrinksCost)");
+      debugPrint(
+          "Total meals count: $totalMeals, Total consumption: $totalConsumption (Meals: $totalMealsCost, Drinks: $totalDrinksCost)");
 
       for (final memberId in activeMemberIds) {
         final mealCount = memberMealCounts[memberId] ?? 0;
@@ -131,9 +163,8 @@ class MiscellaneousDistribution {
         final memberConsumption = mealCost + drinkCost;
 
         // الحصة (أ): بالنسبة لعدد الوجبات
-        final double shareA = totalMeals > 0
-            ? (totalMiscValue * (mealCount / totalMeals))
-            : 0.0;
+        final double shareA =
+            totalMeals > 0 ? (totalMiscValue * (mealCount / totalMeals)) : 0.0;
 
         // الحصة (ب): بالنسبة لمبالغ الاستهلاك (وجبات + مشروبات)
         final double shareB = totalConsumption > 0
@@ -141,7 +172,8 @@ class MiscellaneousDistribution {
             : shareA;
 
         // المتوسط الحسابي العادل مقرباً لمنزلتين عشريتين
-        final double finalAmount = double.parse(((shareA + shareB) / 2).toStringAsFixed(2));
+        final double finalAmount =
+            double.parse(((shareA + shareB) / 2).toStringAsFixed(2));
 
         if (finalAmount <= 0) continue;
 
@@ -154,7 +186,8 @@ class MiscellaneousDistribution {
           "INSERT INTO miscellaneous_contributions (member_id, misc_amount, meal_count, distribution_date) VALUES (?, ?, ?, ?)",
           [memberId, finalAmount, mealCount, distributionDate],
         );
-        debugPrint("Member $memberId: meals=$mealCount, consumption=$memberConsumption -> shareA=$shareA, shareB=$shareB, final=$finalAmount");
+        debugPrint(
+            "Member $memberId: meals=$mealCount, consumption=$memberConsumption -> shareA=$shareA, shareB=$shareB, final=$finalAmount");
       }
 
       debugPrint("Distribution completed for ${expenseIds.length} expenses");
